@@ -1,0 +1,55 @@
+- main [ref=e2]:
+  - generic [ref=e3]:
+    - heading "HubNews Admin" [level=1] [ref=e4]
+    - generic [ref=e5]: Error
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - text: Search
+      - searchbox "Search" [ref=e8]
+    - generic [ref=e9]:
+      - text: Source
+      - combobox "Source" [ref=e10]:
+        - option "All sources" [selected]
+    - generic [ref=e11]:
+      - text: Topic
+      - combobox "Topic" [ref=e12]:
+        - option "All topics" [selected]
+    - generic [ref=e13]:
+      - text: Status
+      - combobox "Status" [ref=e14]:
+        - option "All statuses" [selected]
+        - option "Pending"
+        - option "Matched"
+        - option "Rejected"
+    - generic [ref=e15]:
+      - text: From
+      - textbox "From" [ref=e16]
+    - generic [ref=e17]:
+      - text: To
+      - textbox "To" [ref=e18]
+    - generic [ref=e19]:
+      - text: Page size
+      - combobox "Page size" [ref=e20]:
+        - option "10"
+        - option "25" [selected]
+        - option "50"
+        - option "100"
+    - generic [ref=e21]:
+      - button "Reset" [ref=e22] [cursor=pointer]
+      - button "Apply" [ref=e23] [cursor=pointer]
+  - table [ref=e25]:
+    - rowgroup [ref=e32]:
+      - row "Headline Source Date Eval Link" [ref=e33]:
+        - columnheader "Headline" [ref=e34]
+        - columnheader "Source" [ref=e35]
+        - columnheader "Date" [ref=e36]
+        - columnheader "Eval" [ref=e37]
+        - columnheader "Link" [ref=e38]
+    - rowgroup [ref=e39]:
+      - 'row "Failed to execute ''fetch'' on ''Window'': Request cannot be constructed from a URL that includes credentials: /admin/api/sources" [ref=e40]':
+        - 'cell "Failed to execute ''fetch'' on ''Window'': Request cannot be constructed from a URL that includes credentials: /admin/api/sources" [ref=e41]'
+  - navigation "Pagination" [ref=e42]:
+    - generic [ref=e43]: Page 1
+    - generic [ref=e44]:
+      - button "Previous" [ref=e45] [cursor=pointer]
+      - button "Next" [ref=e46] [cursor=pointer]

@@ -1,0 +1,315 @@
+- main [ref=e2]:
+  - generic [ref=e3]:
+    - heading "HubNews Admin" [level=1] [ref=e4]
+    - generic [ref=e5]: 25 shown
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - text: Search
+      - searchbox "Search" [ref=e8]
+    - generic [ref=e9]:
+      - text: Source
+      - combobox "Source" [ref=e10]:
+        - option "All sources" [selected]
+        - option "BBC News"
+        - option "Daily Mail"
+        - option "Financial Times"
+        - option "Gazeta Wyborcza"
+        - option "PAP"
+        - option "Press Association"
+        - option "Reuters"
+        - option "Rzeczpospolita"
+        - option "The Guardian"
+        - option "The Times"
+        - option "TVN24"
+        - option "TVP"
+    - generic [ref=e11]:
+      - text: Topic
+      - combobox "Topic" [ref=e12]:
+        - option "All topics" [selected]
+    - generic [ref=e13]:
+      - text: Status
+      - combobox "Status" [ref=e14]:
+        - option "All statuses" [selected]
+        - option "Pending"
+        - option "Matched"
+        - option "Rejected"
+    - generic [ref=e15]:
+      - text: From
+      - textbox "From" [ref=e16]
+    - generic [ref=e17]:
+      - text: To
+      - textbox "To" [ref=e18]
+    - generic [ref=e19]:
+      - text: Page size
+      - combobox "Page size" [ref=e20]:
+        - option "10"
+        - option "25" [selected]
+        - option "50"
+        - option "100"
+    - generic [ref=e21]:
+      - button "Reset" [ref=e22] [cursor=pointer]
+      - button "Apply" [ref=e23] [cursor=pointer]
+  - table [ref=e25]:
+    - rowgroup [ref=e32]:
+      - row "Headline Source Date Eval Link" [ref=e33]:
+        - columnheader "Headline" [ref=e34]
+        - columnheader "Source" [ref=e35]
+        - columnheader "Date" [ref=e36]
+        - columnheader "Eval" [ref=e37]
+        - columnheader "Link" [ref=e38]
+    - rowgroup [ref=e39]:
+      - 'row "‘This has done her more harm than good’: Democrats savage Jill Biden’s book The Times Jun 03, 2026, 01:43 PM None Open" [ref=e40]':
+        - 'cell "‘This has done her more harm than good’: Democrats savage Jill Biden’s book" [ref=e41]':
+          - 'link "‘This has done her more harm than good’: Democrats savage Jill Biden’s book" [ref=e42] [cursor=pointer]':
+            - /url: https://www.thetimes.co.uk/us/american-politics/article/jill-biden-interview-today-book-dpxl3qrn6
+        - cell "The Times" [ref=e43]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e44]
+        - cell "None" [ref=e45]
+        - cell "Open" [ref=e46]:
+          - link "Open" [ref=e47] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/us/american-politics/article/jill-biden-interview-today-book-dpxl3qrn6
+      - row "Roman villa in a school’s basement discovered by its pupils The Times Jun 03, 2026, 01:43 PM None Open" [ref=e48]:
+        - cell "Roman villa in a school’s basement discovered by its pupils" [ref=e49]:
+          - link "Roman villa in a school’s basement discovered by its pupils" [ref=e50] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/world/europe/article/ancient-rome-italy-high-school-basement-fq385mgb7
+        - cell "The Times" [ref=e51]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e52]
+        - cell "None" [ref=e53]
+        - cell "Open" [ref=e54]:
+          - link "Open" [ref=e55] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/world/europe/article/ancient-rome-italy-high-school-basement-fq385mgb7
+      - row "Xi’s surveillance state seeks to identify future dissidents The Times Jun 03, 2026, 01:43 PM None Open" [ref=e56]:
+        - cell "Xi’s surveillance state seeks to identify future dissidents" [ref=e57]:
+          - link "Xi’s surveillance state seeks to identify future dissidents" [ref=e58] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/world/asia/article/china-surveillance-xi-dissidents-9tsc2pv36
+        - cell "The Times" [ref=e59]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e60]
+        - cell "None" [ref=e61]
+        - cell "Open" [ref=e62]:
+          - link "Open" [ref=e63] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/world/asia/article/china-surveillance-xi-dissidents-9tsc2pv36
+      - row "Drones hit St Petersburg on first day of ‘Russian Davos’ The Times Jun 03, 2026, 01:43 PM None Open" [ref=e64]:
+        - cell "Drones hit St Petersburg on first day of ‘Russian Davos’" [ref=e65]:
+          - link "Drones hit St Petersburg on first day of ‘Russian Davos’" [ref=e66] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/world/europe/article/drones-hit-st-petersburg-on-opening-day-of-russian-davos-2mln3z7dm
+        - cell "The Times" [ref=e67]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e68]
+        - cell "None" [ref=e69]
+        - cell "Open" [ref=e70]:
+          - link "Open" [ref=e71] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/world/europe/article/drones-hit-st-petersburg-on-opening-day-of-russian-davos-2mln3z7dm
+      - row "Trump, Netanyahu and a special relationship that’s on the rocks The Times Jun 03, 2026, 01:43 PM None Open" [ref=e72]:
+        - cell "Trump, Netanyahu and a special relationship that’s on the rocks" [ref=e73]:
+          - link "Trump, Netanyahu and a special relationship that’s on the rocks" [ref=e74] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/us/news-today/article/trump-netanyahu-special-relationship-fallout-s7z2sdx8t
+        - cell "The Times" [ref=e75]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e76]
+        - cell "None" [ref=e77]
+        - cell "Open" [ref=e78]:
+          - link "Open" [ref=e79] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/us/news-today/article/trump-netanyahu-special-relationship-fallout-s7z2sdx8t
+      - row "Inside the grade II listed Cotswolds home of a modern art collector The Times Jun 03, 2026, 01:43 PM None Open" [ref=e80]:
+        - cell "Inside the grade II listed Cotswolds home of a modern art collector" [ref=e81]:
+          - link "Inside the grade II listed Cotswolds home of a modern art collector" [ref=e82] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/video/lifestyle/article/lucy-abel-smith-home-3wckb37rq
+        - cell "The Times" [ref=e83]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e84]
+        - cell "None" [ref=e85]
+        - cell "Open" [ref=e86]:
+          - link "Open" [ref=e87] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/video/lifestyle/article/lucy-abel-smith-home-3wckb37rq
+      - row "Why the cost of chocolate is soaring The Times Jun 03, 2026, 01:43 PM None Open" [ref=e88]:
+        - cell "Why the cost of chocolate is soaring" [ref=e89]:
+          - link "Why the cost of chocolate is soaring" [ref=e90] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/video/news-video/article/why-cost-chocolate-soaring-hwxkdjgjb
+        - cell "The Times" [ref=e91]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e92]
+        - cell "None" [ref=e93]
+        - cell "Open" [ref=e94]:
+          - link "Open" [ref=e95] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/video/news-video/article/why-cost-chocolate-soaring-hwxkdjgjb
+      - row "How Nigel Farage shaped the debate about Henry Nowak’s murder The Times Jun 03, 2026, 01:43 PM None Open" [ref=e96]:
+        - cell "How Nigel Farage shaped the debate about Henry Nowak’s murder" [ref=e97]:
+          - link "How Nigel Farage shaped the debate about Henry Nowak’s murder" [ref=e98] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/uk/crime/article/nigel-farage-debate-henry-nowak-murder-rj5k38dkb
+        - cell "The Times" [ref=e99]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e100]
+        - cell "None" [ref=e101]
+        - cell "Open" [ref=e102]:
+          - link "Open" [ref=e103] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/uk/crime/article/nigel-farage-debate-henry-nowak-murder-rj5k38dkb
+      - 'row ".css-1nfcusy{-webkit-transform:rotate(90deg);-moz-transform:rotate(90deg);-ms-transform:rotate(90deg);transform:rotate(90deg);} The Times Jun 03, 2026, 01:43 PM None Open" [ref=e104]':
+        - 'cell ".css-1nfcusy{-webkit-transform:rotate(90deg);-moz-transform:rotate(90deg);-ms-transform:rotate(90deg);transform:rotate(90deg);}" [ref=e105]':
+          - 'link ".css-1nfcusy{-webkit-transform:rotate(90deg);-moz-transform:rotate(90deg);-ms-transform:rotate(90deg);transform:rotate(90deg);}" [ref=e106] [cursor=pointer]':
+            - /url: https://www.thetimes.co.uk/video
+        - cell "The Times" [ref=e107]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e108]
+        - cell "None" [ref=e109]
+        - cell "Open" [ref=e110]:
+          - link "Open" [ref=e111] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/video
+      - row "Refresh your bathroom — on two budgets The Times Jun 03, 2026, 01:43 PM None Open" [ref=e112]:
+        - cell "Refresh your bathroom — on two budgets" [ref=e113]:
+          - link "Refresh your bathroom — on two budgets" [ref=e114] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/life-style/property-home/article/refresh-your-bathroom-on-two-budgets-08qcqdh5r
+        - cell "The Times" [ref=e115]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e116]
+        - cell "None" [ref=e117]
+        - cell "Open" [ref=e118]:
+          - link "Open" [ref=e119] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/life-style/property-home/article/refresh-your-bathroom-on-two-budgets-08qcqdh5r
+      - 'row "‘Boys at school joke about rape’: what it’s like to be a teen girl now The Times Jun 03, 2026, 01:43 PM None Open" [ref=e120]':
+        - 'cell "‘Boys at school joke about rape’: what it’s like to be a teen girl now" [ref=e121]':
+          - 'link "‘Boys at school joke about rape’: what it’s like to be a teen girl now" [ref=e122] [cursor=pointer]':
+            - /url: https://www.thetimes.co.uk/life-style/parenting/article/boys-at-school-joke-about-rape-what-its-like-to-be-a-teen-girl-now-pg3clrjrz
+        - cell "The Times" [ref=e123]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e124]
+        - cell "None" [ref=e125]
+        - cell "Open" [ref=e126]:
+          - link "Open" [ref=e127] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/life-style/parenting/article/boys-at-school-joke-about-rape-what-its-like-to-be-a-teen-girl-now-pg3clrjrz
+      - row "The day I met Callum Turner and why he gets my vote to be Bond The Times Jun 03, 2026, 01:43 PM None Open" [ref=e128]:
+        - cell "The day I met Callum Turner and why he gets my vote to be Bond" [ref=e129]:
+          - link "The day I met Callum Turner and why he gets my vote to be Bond" [ref=e130] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/life-style/celebrity/article/if-callum-turner-is-the-next-bond-this-is-why-he-deserves-to-be-007-zpzlr6bbh
+        - cell "The Times" [ref=e131]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e132]
+        - cell "None" [ref=e133]
+        - cell "Open" [ref=e134]:
+          - link "Open" [ref=e135] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/life-style/celebrity/article/if-callum-turner-is-the-next-bond-this-is-why-he-deserves-to-be-007-zpzlr6bbh
+      - row "Why I made ice cream from my partner’s breast milk The Times Jun 03, 2026, 01:43 PM None Open" [ref=e136]:
+        - cell "Why I made ice cream from my partner’s breast milk" [ref=e137]:
+          - link "Why I made ice cream from my partner’s breast milk" [ref=e138] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/life-style/food-drink/article/why-i-made-ice-cream-from-my-partners-breast-milk-9c0zq57nv
+        - cell "The Times" [ref=e139]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e140]
+        - cell "None" [ref=e141]
+        - cell "Open" [ref=e142]:
+          - link "Open" [ref=e143] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/life-style/food-drink/article/why-i-made-ice-cream-from-my-partners-breast-milk-9c0zq57nv
+      - row "Marilyn Monroe at the National Portrait Gallery is a well-padded brassière of a show The Times Jun 03, 2026, 01:43 PM None Open" [ref=e144]:
+        - cell "Marilyn Monroe at the National Portrait Gallery is a well-padded brassière of a show" [ref=e145]:
+          - link "Marilyn Monroe at the National Portrait Gallery is a well-padded brassière of a show" [ref=e146] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/culture/art/article/marilyn-monroe-a-portrait-review-national-portrait-gallery-qwxz8zqxt
+        - cell "The Times" [ref=e147]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e148]
+        - cell "None" [ref=e149]
+        - cell "Open" [ref=e150]:
+          - link "Open" [ref=e151] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/culture/art/article/marilyn-monroe-a-portrait-review-national-portrait-gallery-qwxz8zqxt
+      - 'row "Jill Stein: how I survived Rick’s fame — and our divorce The Times Jun 03, 2026, 01:43 PM None Open" [ref=e152]':
+        - 'cell "Jill Stein: how I survived Rick’s fame — and our divorce" [ref=e153]':
+          - 'link "Jill Stein: how I survived Rick’s fame — and our divorce" [ref=e154] [cursor=pointer]':
+            - /url: https://www.thetimes.co.uk/life-style/food-drink/article/jill-stein-rick-interview-recipes-rm5mfdftc
+        - cell "The Times" [ref=e155]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e156]
+        - cell "None" [ref=e157]
+        - cell "Open" [ref=e158]:
+          - link "Open" [ref=e159] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/life-style/food-drink/article/jill-stein-rick-interview-recipes-rm5mfdftc
+      - 'row "My life after Soho House and cancer: what Nick Jones did next The Times Jun 03, 2026, 01:43 PM None Open" [ref=e160]':
+        - 'cell "My life after Soho House and cancer: what Nick Jones did next" [ref=e161]':
+          - 'link "My life after Soho House and cancer: what Nick Jones did next" [ref=e162] [cursor=pointer]':
+            - /url: https://www.thetimes.co.uk/life-style/celebrity/article/nick-jones-interview-soho-house-prostate-cancer-interview-5j6pzb7gh
+        - cell "The Times" [ref=e163]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e164]
+        - cell "None" [ref=e165]
+        - cell "Open" [ref=e166]:
+          - link "Open" [ref=e167] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/life-style/celebrity/article/nick-jones-interview-soho-house-prostate-cancer-interview-5j6pzb7gh
+      - row "Rescue donkeys in Arsenal socks — and other news in pictures The Times Jun 03, 2026, 01:43 PM None Open" [ref=e168]:
+        - cell "Rescue donkeys in Arsenal socks — and other news in pictures" [ref=e169]:
+          - link "Rescue donkeys in Arsenal socks — and other news in pictures" [ref=e170] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/uk/photography-uk/article/rescue-donkeys-in-arsenal-socks-and-other-news-in-pictures-26x7bq2c0
+        - cell "The Times" [ref=e171]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e172]
+        - cell "None" [ref=e173]
+        - cell "Open" [ref=e174]:
+          - link "Open" [ref=e175] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/uk/photography-uk/article/rescue-donkeys-in-arsenal-socks-and-other-news-in-pictures-26x7bq2c0
+      - row "Patients go abroad for leg-lengthening then use NHS to fix ‘serious issues’ The Times Jun 03, 2026, 01:43 PM None Open" [ref=e176]:
+        - cell "Patients go abroad for leg-lengthening then use NHS to fix ‘serious issues’" [ref=e177]:
+          - link "Patients go abroad for leg-lengthening then use NHS to fix ‘serious issues’" [ref=e178] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/uk/healthcare/article/leg-lengthening-surgery-nhs-turkey-ddbvt7gqw
+        - cell "The Times" [ref=e179]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e180]
+        - cell "None" [ref=e181]
+        - cell "Open" [ref=e182]:
+          - link "Open" [ref=e183] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/uk/healthcare/article/leg-lengthening-surgery-nhs-turkey-ddbvt7gqw
+      - row "Jill Biden reveals Joe’s shaken whisper after Trump debate The Times Jun 03, 2026, 01:43 PM None Open" [ref=e184]:
+        - cell "Jill Biden reveals Joe’s shaken whisper after Trump debate" [ref=e185]:
+          - link "Jill Biden reveals Joe’s shaken whisper after Trump debate" [ref=e186] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/us/news-today/article/jill-biden-joe-whisper-trump-debate-book-m53sc29lc
+        - cell "The Times" [ref=e187]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e188]
+        - cell "None" [ref=e189]
+        - cell "Open" [ref=e190]:
+          - link "Open" [ref=e191] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/us/news-today/article/jill-biden-joe-whisper-trump-debate-book-m53sc29lc
+      - row "Private schools have lost 30,000 pupils since introduction of VAT The Times Jun 03, 2026, 01:43 PM None Open" [ref=e192]:
+        - cell "Private schools have lost 30,000 pupils since introduction of VAT" [ref=e193]:
+          - link "Private schools have lost 30,000 pupils since introduction of VAT" [ref=e194] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/uk/education/article/private-schools-pupils-fallen-vat-fees-kpc3fgzdx
+        - cell "The Times" [ref=e195]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e196]
+        - cell "None" [ref=e197]
+        - cell "Open" [ref=e198]:
+          - link "Open" [ref=e199] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/uk/education/article/private-schools-pupils-fallen-vat-fees-kpc3fgzdx
+      - row "Two hours of strength training a week may help you live longer The Times Jun 03, 2026, 01:43 PM None Open" [ref=e200]:
+        - cell "Two hours of strength training a week may help you live longer" [ref=e201]:
+          - link "Two hours of strength training a week may help you live longer" [ref=e202] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/uk/healthcare/article/exercise-weight-training-cardio-t7hs2mwm7
+        - cell "The Times" [ref=e203]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e204]
+        - cell "None" [ref=e205]
+        - cell "Open" [ref=e206]:
+          - link "Open" [ref=e207] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/uk/healthcare/article/exercise-weight-training-cardio-t7hs2mwm7
+      - row "Bosses may have to pay staff for cancelled shifts in workers’ rights plan The Times Jun 03, 2026, 01:43 PM None Open" [ref=e208]:
+        - cell "Bosses may have to pay staff for cancelled shifts in workers’ rights plan" [ref=e209]:
+          - link "Bosses may have to pay staff for cancelled shifts in workers’ rights plan" [ref=e210] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/uk/politics/article/labour-workers-rights-zero-hours-contracts-cancelled-shifts-3225xt06f
+        - cell "The Times" [ref=e211]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e212]
+        - cell "None" [ref=e213]
+        - cell "Open" [ref=e214]:
+          - link "Open" [ref=e215] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/uk/politics/article/labour-workers-rights-zero-hours-contracts-cancelled-shifts-3225xt06f
+      - 'row "Michelle Obama: Gen Z workers must learn to endure bad bosses The Times Jun 03, 2026, 01:43 PM None Open" [ref=e216]':
+        - 'cell "Michelle Obama: Gen Z workers must learn to endure bad bosses" [ref=e217]':
+          - 'link "Michelle Obama: Gen Z workers must learn to endure bad bosses" [ref=e218] [cursor=pointer]':
+            - /url: https://www.thetimes.co.uk/uk/london/article/michelle-obama-gen-z-workers-bosses-kthqt37r3
+        - cell "The Times" [ref=e219]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e220]
+        - cell "None" [ref=e221]
+        - cell "Open" [ref=e222]:
+          - link "Open" [ref=e223] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/uk/london/article/michelle-obama-gen-z-workers-bosses-kthqt37r3
+      - row "Why you now need £845,000 for a comfortable retirement The Times Jun 03, 2026, 01:43 PM None Open" [ref=e224]:
+        - cell "Why you now need £845,000 for a comfortable retirement" [ref=e225]:
+          - link "Why you now need £845,000 for a comfortable retirement" [ref=e226] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/money/pensions/article/why-you-now-need-845000-for-a-comfortable-retirement-2vmf69zvz
+        - cell "The Times" [ref=e227]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e228]
+        - cell "None" [ref=e229]
+        - cell "Open" [ref=e230]:
+          - link "Open" [ref=e231] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/money/pensions/article/why-you-now-need-845000-for-a-comfortable-retirement-2vmf69zvz
+      - 'row "Our interactive team-by-team guide: all the stats you need The Times Jun 03, 2026, 01:43 PM None Open" [ref=e232]':
+        - 'cell "Our interactive team-by-team guide: all the stats you need" [ref=e233]':
+          - 'link "Our interactive team-by-team guide: all the stats you need" [ref=e234] [cursor=pointer]':
+            - /url: https://www.thetimes.co.uk/sport/football/world-cup/article/world-cup-2026-teams-guide-players-squads-pp3k9lsbp
+        - cell "The Times" [ref=e235]
+        - cell "Jun 03, 2026, 01:43 PM" [ref=e236]
+        - cell "None" [ref=e237]
+        - cell "Open" [ref=e238]:
+          - link "Open" [ref=e239] [cursor=pointer]:
+            - /url: https://www.thetimes.co.uk/sport/football/world-cup/article/world-cup-2026-teams-guide-players-squads-pp3k9lsbp
+  - navigation "Pagination" [ref=e240]:
+    - generic [ref=e241]: Page 1
+    - generic [ref=e242]:
+      - button "Previous" [disabled] [ref=e243] [cursor=pointer]
+      - button "Next" [ref=e244] [cursor=pointer]

@@ -1,0 +1,18 @@
+{
+  "rewrites": [
+    {
+      "source": "/admin",
+      "destination": "/api/admin"
+    },
+    {
+      "source": "/admin/(.*)",
+      "destination": "/api/admin/$1"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/aggregate",
+      "schedule": "*/15 * * * *"
+    }
+  ]
+}

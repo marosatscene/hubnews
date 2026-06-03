@@ -1,0 +1,18 @@
+[     217ms] [WARNING] fun-hooks: referenced 'registerAdserver' but it was never created @ https://ads.thetimes.com/prebid.times_render.min.js:16
+[     217ms] [WARNING] fun-hooks: referenced 'adpod' but it was never created @ https://ads.thetimes.com/prebid.times_render.min.js:16
+[     217ms] [WARNING] fun-hooks: referenced 'firstPartyData' but it was never created @ https://ads.thetimes.com/prebid.times_render.min.js:16
+[     337ms] [LOG] Subscriptions Runtime: 1.0.148 @ https://news.google.com/swg/js/v1/swg.js:0
+[     354ms] [LOG] ipsos section @ https://tags.tiqcdn.com/utag/newsinternational/thetimes.2025.wordpress/prod/utag.184.js?utv=ut4.53.202511061412:4
+[     485ms] [LOG] Messaging without detection successfully executed. @ https://consent.thetimes.com/unified/wrapperMessagingWithoutDetection.js?ver=0.159.0:0
+[     499ms] [LOG] interaction complete @ https://consent.thetimes.com/unified/wrapperMessagingWithoutDetection.js?ver=0.159.0:0
+[     530ms] [WARNING] [GPT] PubAdsService.disableInitialLoad is deprecated, use googletag.setConfig({disableInitialLoad: ...}) instead.
+https://goo.gle/gpt-message#170 @ https://securepubads.g.doubleclick.net/pagead/managed/js/gpt/m202605260101/pubads_impl.js:18
+[     589ms] [WARNING] [GPT] Slot.getTargeting is deprecated, use Slot.getConfig('targeting') instead.
+https://goo.gle/gpt-message#201 @ https://securepubads.g.doubleclick.net/pagead/managed/js/gpt/m202605260101/pubads_impl.js:18
+[     607ms] [LOG] brandmetrics: newsUK om_v_id, pageviewId =  019e8d52eb490022da842faa85a405075005f06d00bd0 4355b216-1681-49d0-b148-5b671495b2cb @ :2
+[     909ms] [INFO] Pinterest Tag Error: 'load' command was called multiple times.  Previously for tag id '%s', now for tag id '%s'. 2614380761124 2614380761124 @ https://s.pinimg.com/ct/lib/main.0fc62dfe.js:0
+[     909ms] [INFO] Pinterest Tag Error: 'load' command was called multiple times.  Previously for tag id '%s', now for tag id '%s'. 2614380761124 2614380761124 @ https://s.pinimg.com/ct/lib/main.0fc62dfe.js:0
+[    1124ms] [ERROR] Attestation check for Protected Audience on https://grid-bidder.criteo.com failed. @ https://www.thetimes.com/world/asia/article/china-surveillance-xi-dissidents-9tsc2pv36:0
+[    1124ms] [ERROR] Attestation check for Protected Audience on https://fastlane.rubiconproject.com failed. @ https://www.thetimes.com/world/asia/article/china-surveillance-xi-dissidents-9tsc2pv36:0
+[    1124ms] [ERROR] Attestation check for Protected Audience on https://htlb.casalemedia.com failed. @ https://www.thetimes.com/world/asia/article/china-surveillance-xi-dissidents-9tsc2pv36:0
+[    1125ms] [ERROR] Attestation check for Protected Audience on https://hbopenbid.pubmatic.com failed. @ https://www.thetimes.com/world/asia/article/china-surveillance-xi-dissidents-9tsc2pv36:0

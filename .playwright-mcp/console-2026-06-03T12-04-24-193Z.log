@@ -1,0 +1,10 @@
+[     949ms] [LOG] Messaging without detection successfully executed. @ https://cdn.privacy-mgmt.com/unified/wrapperMessagingWithoutDetection.js:0
+[    2198ms] [LOG] interaction complete @ https://cdn.privacy-mgmt.com/unified/wrapperMessagingWithoutDetection.js:0
+[    2387ms] [LOG] setAdunits has been called, will set window.ozAdUnits now @ https://prebid.the-ozone-project.com/hw2/OZONEBBC4784/1500000107/current/adUnits.min.js:0
+[    2387ms] [LOG] window.ozAdUnits has been created. @ https://prebid.the-ozone-project.com/hw2/OZONEBBC4784/1500000107/current/adUnits.min.js:0
+[    2466ms] [WARNING] adgb - not initialized. @ https://cdn.taboola.com/libtrc/bbcglobal-network/loader.js:0
+[    2616ms] [WARNING] Permutive was not initialized. No consent to run on the page @ https://cdn.permutive.com/e488cdb0-e7cb-4d91-9648-60d437d8e491-web.js:0
+[    2637ms] [WARNING] [GPT] PubAdsService.clearCategoryExclusions is deprecated, use googletag.setConfig({categoryExclusion: ...}) instead.
+https://goo.gle/gpt-message#170 @ https://securepubads.g.doubleclick.net/pagead/managed/js/gpt/m202605130201/pubads_impl.js?cb=31098808:18
+[    2720ms] [WARNING] [GPT] Slot.getTargeting is deprecated, use Slot.getConfig('targeting') instead.
+https://goo.gle/gpt-message#201 @ https://securepubads.g.doubleclick.net/pagead/managed/js/gpt/m202605130201/pubads_impl.js?cb=31098808:18
