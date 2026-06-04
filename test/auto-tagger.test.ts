@@ -198,9 +198,14 @@ test("autoTagArticlesForTopics ignores LLM results for articles outside the requ
 
   assert.deepEqual(
     stored.map((row) => [row.articleId, row.topicId, row.status]),
-    [[30, 1, "matched"]]
+    [
+      [30, 1, "matched"],
+      [31, 1, "rejected"]
+    ]
   );
-  assert.equal(result.evaluatedCount, 1);
+  assert.equal(stored[1].reason, "LLM did not return a classification for this article.");
+  assert.deepEqual(stored[1].raw, { missingFromLlm: true });
+  assert.equal(result.evaluatedCount, 2);
   assert.equal(result.matchedCount, 1);
-  assert.equal(result.rejectedCount, 0);
+  assert.equal(result.rejectedCount, 1);
 });

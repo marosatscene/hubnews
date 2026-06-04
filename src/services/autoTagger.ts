@@ -32,22 +32,37 @@ function summarizeResults(results: AnyRecord[]) {
   };
 }
 
-function keepResultsForTargets(results: AnyRecord[], targets: AnyRecord[]) {
-  const targetIds = new Set(targets.map((article) => Number(article.id)).filter(Number.isFinite));
+function completeResultsForTargets(results: AnyRecord[], targets: AnyRecord[], model: string) {
+  const targetIds = targets.map((article) => Number(article.id)).filter(Number.isFinite);
+  const targetIdSet = new Set(targetIds);
   const seenIds = new Set<number>();
 
-  return results
+  const keptResults: AnyRecord[] = results
     .map((result) => ({
       ...result,
       articleId: Number(result.articleId)
     }))
     .filter((result) => {
       if (!Number.isFinite(result.articleId)) return false;
-      if (!targetIds.has(result.articleId)) return false;
+      if (!targetIdSet.has(result.articleId)) return false;
       if (seenIds.has(result.articleId)) return false;
       seenIds.add(result.articleId);
       return true;
     });
+
+  for (const articleId of targetIds) {
+    if (seenIds.has(articleId)) continue;
+    keptResults.push({
+      articleId,
+      status: "rejected",
+      confidence: null,
+      reason: "LLM did not return a classification for this article.",
+      model,
+      raw: { missingFromLlm: true }
+    });
+  }
+
+  return keptResults;
 }
 
 function hasAutoTaggingLlmProvider(options: AnyRecord = {}) {
@@ -153,9 +168,10 @@ async function autoTagArticlesForTopics(options: AnyRecord = {}) {
       continue;
     }
 
-    const results = keepResultsForTargets(
+    const results = completeResultsForTargets(
       await filterArticlesForTopic(topic, targets, filterOptions),
-      targets
+      targets,
+      filterOptions.model
     );
     await storeResults(evaluationRepo, topic, results);
     const summary = summarizeResults(results);
