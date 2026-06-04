@@ -380,26 +380,44 @@ const articleRepo = {
   },
 
   async listUnevaluatedForTopic(topicId: any, limit = 50) {
-    const { data: evaluations, error: evaluationsError } = await supabase
-      .from("article_topic_evaluations")
-      .select("article_id")
-      .eq("topic_id", topicId)
-      .limit(10000);
-    throwIfError(evaluationsError);
+    const boundedLimit = Math.min(Number(limit) || 50, maxEvaluationBatchSize);
+    const evaluatedIds = new Set<number>();
+    const evaluationPageSize = 1000;
 
-    const evaluatedIds = evaluations.map((row: any) => row.article_id);
-    let query = supabase.from("articles").select("*, sources(name)");
-    if (evaluatedIds.length) {
-      query = query.not("id", "in", `(${evaluatedIds.join(",")})`);
+    for (let from = 0; ; from += evaluationPageSize) {
+      const { data: evaluations, error: evaluationsError } = await supabase
+        .from("article_topic_evaluations")
+        .select("article_id")
+        .eq("topic_id", topicId)
+        .range(from, from + evaluationPageSize - 1);
+      throwIfError(evaluationsError);
+
+      for (const row of evaluations || []) {
+        if (row.article_id) evaluatedIds.add(Number(row.article_id));
+      }
+      if (!evaluations || evaluations.length < evaluationPageSize) break;
     }
 
-    const { data, error } = await query
-      .order("published_at", { ascending: false, nullsFirst: false })
-      .order("discovered_at", { ascending: false })
-      .order("id", { ascending: false })
-      .limit(Math.min(Number(limit) || 50, maxEvaluationBatchSize));
-    throwIfError(error);
-    return data.map(mapArticle);
+    const articles = [];
+    const articlePageSize = Math.max(boundedLimit, 500);
+    for (let from = 0; articles.length < boundedLimit; from += articlePageSize) {
+      const { data, error } = await supabase
+        .from("articles")
+        .select("*, sources(name)")
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .order("discovered_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, from + articlePageSize - 1);
+      throwIfError(error);
+
+      for (const article of data || []) {
+        if (!evaluatedIds.has(Number(article.id))) articles.push(article);
+        if (articles.length >= boundedLimit) break;
+      }
+      if (!data || data.length < articlePageSize) break;
+    }
+
+    return articles.slice(0, boundedLimit).map(mapArticle);
   },
 
   async listArticlesMissingContent(limit = 20, options: AnyRecord = {}) {
