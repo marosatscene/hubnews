@@ -149,6 +149,9 @@ async function withAdminApp(options: AnyRecord, callback: any) {
       autoTagArticlesForTopics: options.autoTagArticlesForTopics,
       filterArticlesForTopic: options.filterArticlesForTopic,
       translateHeadlines: options.translateHeadlines,
+      extractMissingArticleContent: options.extractMissingArticleContent,
+      backfillLocalArticleEmbeddings: options.backfillLocalArticleEmbeddings,
+      semanticSearchLocalArticles: options.semanticSearchLocalArticles,
       aggregateSourceById: options.aggregateSourceById,
       aggregateMissingSources: options.aggregateMissingSources,
       ...repos
@@ -612,6 +615,92 @@ test("admin headline translation endpoint translates missing rows and stores res
         remainingMissingCount: 0
       });
       assert.equal(JSON.stringify(body).includes("privatePrompt"), false);
+    }
+  );
+});
+
+test("admin content extraction and semantic index endpoints are authenticated and bounded", async () => {
+  let extractInput;
+  let indexInput;
+  let searchInput;
+
+  await withAdminApp(
+    {
+      adminUser: "admin",
+      adminPassword: "secret",
+      extractMissingArticleContent: async (input) => {
+        extractInput = input;
+        return {
+          requestedCount: 2,
+          extractedCount: 1,
+          skippedCount: 0,
+          failedCount: 1
+        };
+      },
+      backfillLocalArticleEmbeddings: async (input) => {
+        indexInput = input;
+        return {
+          model: input.model,
+          requestedCount: 3,
+          embeddedCount: 3
+        };
+      },
+      semanticSearchLocalArticles: async (query, input) => {
+        searchInput = { query, input };
+        return {
+          model: input.model,
+          query,
+          indexedCount: 3,
+          results: []
+        };
+      }
+    },
+    async (get) => {
+      const blocked = await get("/admin/api/articles/extract-content/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: { limit: 20 }
+      });
+      assert.equal(blocked.status, 401);
+
+      const headers = {
+        Authorization: authHeader(),
+        "Content-Type": "application/json"
+      };
+
+      const extractResponse = await get("/admin/api/articles/extract-content/run", {
+        method: "POST",
+        headers,
+        body: { limit: 5000, force: true }
+      });
+      assert.equal(extractResponse.status, 200);
+      assert.deepEqual(extractInput, { force: true, limit: 200 });
+      assert.deepEqual(await extractResponse.json(), {
+        requestedCount: 2,
+        extractedCount: 1,
+        skippedCount: 0,
+        failedCount: 1
+      });
+
+      const indexResponse = await get("/admin/api/articles/semantic-index/run", {
+        method: "POST",
+        headers,
+        body: { limit: 25, model: "test-embedding" }
+      });
+      assert.equal(indexResponse.status, 200);
+      assert.deepEqual(indexInput, { limit: 25, model: "test-embedding" });
+      assert.equal((await indexResponse.json()).embeddedCount, 3);
+
+      const searchResponse = await get(
+        "/admin/api/articles/semantic-search?q=slovakia&limit=3&model=test-embedding",
+        { headers }
+      );
+      assert.equal(searchResponse.status, 200);
+      assert.deepEqual(searchInput, {
+        query: "slovakia",
+        input: { limit: "3", model: "test-embedding" }
+      });
+      assert.equal((await searchResponse.json()).indexedCount, 3);
     }
   );
 });

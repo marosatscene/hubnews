@@ -141,3 +141,66 @@ test("autoTagArticlesForTopics skips supplied article-topic pairs that are alrea
   );
   assert.equal(result.evaluatedCount, 3);
 });
+
+test("autoTagArticlesForTopics ignores LLM results for articles outside the requested batch", async () => {
+  const stored = [];
+
+  const result = await autoTagArticlesForTopics({
+    model: "mock-nano",
+    limitPerTopic: 2,
+    topicRepo: {
+      async listTopics() {
+        return [{ id: 1, name: "Foreign policy", description: "Diplomacy" }];
+      }
+    },
+    articleRepo: {
+      async listUnevaluatedForTopic() {
+        return [
+          { id: 30, headline: "Summit opens", context: "Diplomacy" },
+          { id: 31, headline: "Markets close", context: "Stocks" }
+        ];
+      }
+    },
+    evaluationRepo: {
+      async upsertEvaluation(input) {
+        stored.push(input);
+      }
+    },
+    async filterArticlesForTopic(_topic, articles, options) {
+      return [
+        {
+          articleId: articles[0].id,
+          status: "matched",
+          confidence: 0.9,
+          reason: "Valid result",
+          model: options.model,
+          raw: {}
+        },
+        {
+          articleId: 8046,
+          status: "matched",
+          confidence: 0.9,
+          reason: "Hallucinated id",
+          model: options.model,
+          raw: {}
+        },
+        {
+          articleId: articles[0].id,
+          status: "rejected",
+          confidence: 0.1,
+          reason: "Duplicate id",
+          model: options.model,
+          raw: {}
+        }
+      ];
+    }
+  });
+
+  assert.deepEqual(
+    stored.map((row) => [row.articleId, row.topicId, row.status]),
+    [[30, 1, "matched"]]
+  );
+  assert.equal(result.evaluatedCount, 1);
+  assert.equal(result.matchedCount, 1);
+  assert.equal(result.rejectedCount, 0);
+});

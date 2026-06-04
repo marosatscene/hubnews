@@ -20,6 +20,11 @@ const {
 const { filterArticlesForTopic: defaultFilterArticlesForTopic } = require("../services/headlineFilter");
 const { translateHeadlines: defaultTranslateHeadlines } = require("../services/headlineTranslator");
 const { autoTagArticlesForTopics: defaultAutoTagArticlesForTopics } = require("../services/autoTagger");
+const { extractMissingArticleContent: defaultExtractMissingArticleContent } = require("../services/contentBackfill");
+const {
+  backfillLocalArticleEmbeddings: defaultBackfillLocalArticleEmbeddings,
+  semanticSearchLocalArticles: defaultSemanticSearchLocalArticles
+} = require("../services/localSemanticSearch");
 const {
   sourceUpdateSchema,
   topicCreateSchema,
@@ -371,9 +376,23 @@ function readHeadlineTranslationInput(body: AnyRecord) {
   };
 }
 
+function readContentExtractionInput(body: AnyRecord) {
+  return {
+    force: Boolean(body.force),
+    limit: parsePositiveInt(body.limit, 20, 200)
+  };
+}
+
 function readAutoTagInput(body: AnyRecord) {
   return {
     limitPerTopic: parsePositiveInt(body.limitPerTopic || body.limit, autoTaggingLimitPerTopic, maxEvaluationBatchSize)
+  };
+}
+
+function readEmbeddingInput(body: AnyRecord) {
+  return {
+    limit: parsePositiveInt(body.limit, 50, 200),
+    model: optionalString(body.model)
   };
 }
 
@@ -574,6 +593,12 @@ function createAdminRouter(options: AnyRecord = {}) {
     options.aggregateMissingSources || defaultAggregateMissingSources;
   const aggregateSourceById =
     options.aggregateSourceById || defaultAggregateSourceById;
+  const extractMissingArticleContent =
+    options.extractMissingArticleContent || defaultExtractMissingArticleContent;
+  const backfillLocalArticleEmbeddings =
+    options.backfillLocalArticleEmbeddings || defaultBackfillLocalArticleEmbeddings;
+  const semanticSearchLocalArticles =
+    options.semanticSearchLocalArticles || defaultSemanticSearchLocalArticles;
   const adminHtmlPath = options.adminHtmlPath || DEFAULT_ADMIN_HTML_PATH;
   const adminAssetsPath = options.adminAssetsPath || DEFAULT_ADMIN_ASSETS_PATH;
 
@@ -809,6 +834,35 @@ function createAdminRouter(options: AnyRecord = {}) {
     asyncRoute(async (req, res) => {
       const input = readHeadlineTranslationInput(req.body || {});
       const result = await translateAndStoreHeadlines(articleRepo, translateHeadlines, input.limit);
+      res.json(result);
+    })
+  );
+
+  router.post(
+    "/api/articles/extract-content/run",
+    asyncRoute(async (req, res) => {
+      const input = readContentExtractionInput(req.body || {});
+      const result = await extractMissingArticleContent(input);
+      res.json(result);
+    })
+  );
+
+  router.post(
+    "/api/articles/semantic-index/run",
+    asyncRoute(async (req, res) => {
+      const input = readEmbeddingInput(req.body || {});
+      const result = await backfillLocalArticleEmbeddings(input);
+      res.json(result);
+    })
+  );
+
+  router.get(
+    "/api/articles/semantic-search",
+    asyncRoute(async (req, res) => {
+      const result = await semanticSearchLocalArticles(String(req.query.q || ""), {
+        limit: req.query.limit,
+        model: optionalString(req.query.model)
+      });
       res.json(result);
     })
   );

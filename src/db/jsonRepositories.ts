@@ -452,10 +452,10 @@ const articleRepo = {
     const data = readData();
     const boundedLimit = Math.min(Number(limit) || 50, 200);
     const embeddings = Array.isArray(data.articleEmbeddings) ? data.articleEmbeddings : [];
-    const embeddingByArticleId = new Map(
+    const embeddingByArticleId: Map<number, AnyRecord> = new Map(
       embeddings
         .filter((embedding) => embedding.model === model)
-        .map((embedding) => [Number(embedding.article_id), embedding])
+        .map((embedding: AnyRecord) => [Number(embedding.article_id), embedding])
     );
 
     return data.articles

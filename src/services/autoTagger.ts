@@ -32,6 +32,24 @@ function summarizeResults(results: AnyRecord[]) {
   };
 }
 
+function keepResultsForTargets(results: AnyRecord[], targets: AnyRecord[]) {
+  const targetIds = new Set(targets.map((article) => Number(article.id)).filter(Number.isFinite));
+  const seenIds = new Set<number>();
+
+  return results
+    .map((result) => ({
+      ...result,
+      articleId: Number(result.articleId)
+    }))
+    .filter((result) => {
+      if (!Number.isFinite(result.articleId)) return false;
+      if (!targetIds.has(result.articleId)) return false;
+      if (seenIds.has(result.articleId)) return false;
+      seenIds.add(result.articleId);
+      return true;
+    });
+}
+
 function hasAutoTaggingLlmProvider(options: AnyRecord = {}) {
   const filterOptions = options.filterOptions || {};
   return Boolean(
@@ -135,7 +153,10 @@ async function autoTagArticlesForTopics(options: AnyRecord = {}) {
       continue;
     }
 
-    const results = await filterArticlesForTopic(topic, targets, filterOptions);
+    const results = keepResultsForTargets(
+      await filterArticlesForTopic(topic, targets, filterOptions),
+      targets
+    );
     await storeResults(evaluationRepo, topic, results);
     const summary = summarizeResults(results);
 
