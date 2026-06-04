@@ -7,6 +7,7 @@ import {
   ExternalLink,
   List,
   Menu,
+  Newspaper,
   Pencil,
   RefreshCcw,
   Save,
@@ -63,18 +64,36 @@ type Topic = {
   description: string | null;
 };
 
-type View = "news" | "sources";
+type TagSuggestion = {
+  name: string;
+  description: string | null;
+  source: "existing" | "starter" | "recent";
+  count: number;
+  existingTopicId: number | null;
+};
+
+type View = "news" | "tagging" | "sources";
+
+type ModelPricing = {
+  inputUsdPerMillion: number;
+  outputUsdPerMillion: number;
+  sourceUrl?: string;
+};
 
 type AdminMeta = {
   llm: {
     provider: string;
     model: string;
     configured: boolean;
-    pricing: null | {
-      inputUsdPerMillion: number;
-      outputUsdPerMillion: number;
-      sourceUrl?: string;
-    };
+    pricing: null | ModelPricing;
+  };
+  autoTagging: {
+    enabled: boolean;
+    provider: string;
+    model: string;
+    configured: boolean;
+    limitPerTopic: number;
+    pricing: null | ModelPricing;
   };
   maxEvaluationBatchSize: number;
 };
@@ -84,7 +103,9 @@ const endpoints = {
   meta: "/admin/api/meta",
   sources: "/admin/api/sources",
   topics: "/admin/api/topics",
+  tagSuggestions: "/admin/api/tag-suggestions",
   semanticFilter: "/admin/api/semantic-filter",
+  autoTag: "/admin/api/auto-tag/run",
   headlineTranslations: "/admin/api/headline-translations/run",
   sourceRefetch: "/admin/api/sources/refetch-missing"
 };
@@ -94,6 +115,14 @@ const defaultAdminMeta: AdminMeta = {
     provider: "unknown",
     model: "unknown",
     configured: false,
+    pricing: null
+  },
+  autoTagging: {
+    enabled: true,
+    provider: "unknown",
+    model: "unknown",
+    configured: false,
+    limitPerTopic: 25,
     pricing: null
   },
   maxEvaluationBatchSize: 1000
@@ -122,11 +151,18 @@ const tooltips = {
     "Extra semantic guidance for the LLM evaluation, such as aliases, places, institutions, and related concepts.",
   semanticLimit: "Maximum number of unevaluated articles to send to the semantic evaluator.",
   semanticEvaluate: "Evaluate headlines against the semantic topic using the configured LLM model.",
+  autoTag:
+    "Run every stored semantic topic against articles that do not yet have an evaluation. Requires a configured OpenAI key or external LLM filter.",
   headlineTranslate:
     "Translate stored article headlines missing Slovak or English versions. Existing translations are skipped.",
   fullTextSearch: "Full-text keyword search over stored headline and context fields. This is not semantic search.",
   sourceFilter: "Filter articles by one news source. Changing this reloads results automatically.",
   topicFilter: "Filter by stored semantic topic evaluations created by the Evaluate action.",
+  tagging:
+    "Manage the semantic tags used by automatic tagging. These tags become the News Hub sections and current-topic chips.",
+  tagSuggestion:
+    "Suggested tags combine stored tags, starter editorial tags, and raw tags found in recent articles.",
+  rerunTagging: "Evaluate all stored tags against articles that do not yet have an evaluation using an LLM provider.",
   statusFilter: "Filter topic-evaluated articles by matched, rejected, or pending status.",
   fromFilter: "Show articles published or discovered on or after this date.",
   toFilter: "Show articles published or discovered on or before this date.",
@@ -143,6 +179,7 @@ const tooltips = {
     "Filter sources by article count or crawl health: zero articles, non-working, or either condition.",
   resetSourceFilters: "Clear source list filters.",
   sourceName: "Open a modal with fetched articles for this source.",
+  newsHub: "Open the Smart News Hub admin preview.",
   editSource: "Open this source in the edit modal.",
   saveSource: "Save edits for this source configuration.",
   viewSourceArticles: "Open a modal with fetched articles for this source.",
@@ -159,6 +196,7 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   if (!response.ok) {
     throw new Error(`Request failed with HTTP ${response.status}`);
   }
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
@@ -219,8 +257,7 @@ function crawlStatusClass(source: Source) {
   return "never";
 }
 
-function estimateEvaluationCost(articleCount: number, meta: AdminMeta) {
-  const pricing = meta.llm.pricing;
+function estimateEvaluationCost(articleCount: number, pricing: ModelPricing | null | undefined) {
   if (!pricing || articleCount <= 0) return null;
 
   const inputTokens = 550 + articleCount * 130;
@@ -232,6 +269,17 @@ function estimateEvaluationCost(articleCount: number, meta: AdminMeta) {
   return { inputTokens, outputTokens, usd };
 }
 
+function isAutoTaggingLlmReady(adminMeta: AdminMeta) {
+  const meta = adminMeta.autoTagging;
+  return Boolean(meta?.enabled && meta.configured && meta.provider !== "keyword-fallback");
+}
+
+function autoTaggingModelLabel(adminMeta: AdminMeta) {
+  return isAutoTaggingLlmReady(adminMeta)
+    ? adminMeta.autoTagging.model
+    : "LLM not configured";
+}
+
 function formatUsd(value: number) {
   if (value > 0 && value < 0.01) return "< $0.01";
   return new Intl.NumberFormat(undefined, {
@@ -239,6 +287,16 @@ function formatUsd(value: number) {
     currency: "USD",
     minimumFractionDigits: 2,
     maximumFractionDigits: 4
+  }).format(value);
+}
+
+function formatPreciseUsd(value: number) {
+  if (value > 0 && value < 0.000001) return "< $0.000001";
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 6,
+    maximumFractionDigits: 6
   }).format(value);
 }
 
@@ -342,6 +400,26 @@ function Sidebar({
           <List size={18} />
           {!collapsed && <span>List of news</span>}
         </button>
+        <a
+          className="nav-item"
+          href="/news-hub/"
+          rel="noreferrer"
+          target="_blank"
+          title={tooltips.newsHub}
+        >
+          <Newspaper size={18} />
+          {!collapsed && <span>News Hub</span>}
+          {!collapsed && <ExternalLink size={14} className="nav-item-link-icon" />}
+        </a>
+        <button
+          className={`nav-item ${currentView === "tagging" ? "active" : ""}`}
+          type="button"
+          onClick={() => onViewChange("tagging")}
+          title={tooltips.tagging}
+        >
+          <Sparkles size={18} />
+          {!collapsed && <span>Tagging</span>}
+        </button>
         <button
           className={`nav-item ${currentView === "sources" ? "active" : ""}`}
           type="button"
@@ -372,6 +450,7 @@ function NewsView({
   onPrev,
   onNext,
   onSemanticEvaluate,
+  onAutoTagArticles,
   onTranslateHeadlines
 }: {
   articles: Article[];
@@ -389,6 +468,7 @@ function NewsView({
   onPrev: () => void;
   onNext: () => void;
   onSemanticEvaluate: (input: { topic: string; description: string; limit: number }) => Promise<void>;
+  onAutoTagArticles: (limitPerTopic: number) => Promise<void>;
   onTranslateHeadlines: () => Promise<void>;
 }) {
   const [semantic, setSemantic] = useState({
@@ -397,13 +477,17 @@ function NewsView({
     limit: "50"
   });
   const [evaluating, setEvaluating] = useState(false);
+  const [autoTagging, setAutoTagging] = useState(false);
   const [translatingHeadlines, setTranslatingHeadlines] = useState(false);
   const page = Math.floor(offset / lastPageSize) + 1;
   const requestedEvalCount =
     semantic.limit === "all"
       ? Math.min(totalArticleCount, adminMeta.maxEvaluationBatchSize)
       : Math.min(Number(semantic.limit || 50), adminMeta.maxEvaluationBatchSize);
-  const costEstimate = estimateEvaluationCost(requestedEvalCount, adminMeta);
+  const autoTaggingEnabled = isAutoTaggingLlmReady(adminMeta);
+  const costEstimate = estimateEvaluationCost(requestedEvalCount, adminMeta.llm.pricing);
+  const autoTagRequestedCount = requestedEvalCount * topics.length;
+  const autoTagCostEstimate = estimateEvaluationCost(autoTagRequestedCount, adminMeta.autoTagging?.pricing);
 
   async function submitSemantic(event: FormEvent) {
     event.preventDefault();
@@ -427,6 +511,15 @@ function NewsView({
       await onTranslateHeadlines();
     } finally {
       setTranslatingHeadlines(false);
+    }
+  }
+
+  async function autoTagArticles() {
+    setAutoTagging(true);
+    try {
+      await onAutoTagArticles(requestedEvalCount);
+    } finally {
+      setAutoTagging(false);
     }
   }
 
@@ -488,13 +581,32 @@ function NewsView({
           <Sparkles size={16} />
           {translatingHeadlines ? "Translating" : "Translate headlines"}
         </button>
+        <button
+          className="button secondary"
+          disabled={autoTagging || !topics.length || !autoTaggingEnabled}
+          title={tooltips.autoTag}
+          type="button"
+          onClick={autoTagArticles}
+        >
+          <Sparkles size={16} />
+          {autoTagging ? "Auto-tagging" : "Auto-tag"}
+        </button>
         <div className="cost-note">
-          <span>Model: {adminMeta.llm.model}</span>
+          <span>Evaluate model: {adminMeta.llm.model}</span>
           <span>
             Estimate:{" "}
             {costEstimate
               ? `${formatUsd(costEstimate.usd)} for ${requestedEvalCount.toLocaleString()} articles`
               : "no LLM token cost"}
+          </span>
+          <span>Auto-tag model: {autoTaggingModelLabel(adminMeta)}</span>
+          <span>
+            Auto-tag estimate:{" "}
+            {autoTagCostEstimate
+              ? `${formatUsd(autoTagCostEstimate.usd)} for up to ${autoTagRequestedCount.toLocaleString()} article-topic checks`
+              : topics.length
+                ? "pricing unavailable"
+                : "create a topic first"}
           </span>
         </div>
       </form>
@@ -683,6 +795,395 @@ function NewsView({
             Next
           </button>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function suggestionSourceLabel(source: TagSuggestion["source"]) {
+  if (source === "existing") return "Stored";
+  if (source === "starter") return "Starter";
+  return "Recent";
+}
+
+function parseFreeTextTags(value: string) {
+  return value
+    .split(/\n+/)
+    .flatMap((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return [];
+      if (!/[|:-]/.test(trimmed) && trimmed.includes(",")) return trimmed.split(",");
+      return [trimmed];
+    })
+    .map((line) => line.replace(/^[-*\d.)\s]+/, "").trim())
+    .map((line) => {
+      const match = line.match(/^(.+?)\s*(?:\||:|-)\s+(.+)$/);
+      return {
+        name: (match ? match[1] : line).trim(),
+        description: (match ? match[2] : "").trim()
+      };
+    })
+    .filter((tag) => tag.name);
+}
+
+function TaggingView({
+  adminMeta,
+  loading,
+  suggestions,
+  topics,
+  totalArticleCount,
+  onCreateTag,
+  onDeleteTag,
+  onRefresh,
+  onRerunTagging,
+  onUpdateTag
+}: {
+  adminMeta: AdminMeta;
+  loading: boolean;
+  suggestions: TagSuggestion[];
+  topics: Topic[];
+  totalArticleCount: number;
+  onCreateTag: (input: { name: string; description: string }) => Promise<void>;
+  onDeleteTag: (topic: Topic) => Promise<void>;
+  onRefresh: () => void;
+  onRerunTagging: (limitPerTopic: number) => Promise<void>;
+  onUpdateTag: (topic: Topic, input: { name: string; description: string }) => Promise<void>;
+}) {
+  const [drafts, setDrafts] = useState<Record<number, { name: string; description: string }>>({});
+  const [newTag, setNewTag] = useState({ name: "", description: "" });
+  const [freeTextTags, setFreeTextTags] = useState("");
+  const [limit, setLimit] = useState(String(adminMeta.autoTagging.limitPerTopic || 25));
+  const [busy, setBusy] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDrafts((current) => {
+      const next: Record<number, { name: string; description: string }> = {};
+      for (const topic of topics) {
+        next[topic.id] = current[topic.id] || {
+          name: topic.name,
+          description: topic.description || ""
+        };
+      }
+      return next;
+    });
+  }, [topics]);
+
+  const requestedLimit =
+    limit === "all"
+      ? Math.min(totalArticleCount, adminMeta.maxEvaluationBatchSize)
+      : Math.min(Number(limit || 25), adminMeta.maxEvaluationBatchSize);
+  const autoTaggingEnabled = isAutoTaggingLlmReady(adminMeta);
+  const autoTaggingModel = autoTaggingModelLabel(adminMeta);
+  const estimatedChecks = requestedLimit * topics.length;
+  const costEstimate = estimateEvaluationCost(estimatedChecks, adminMeta.autoTagging?.pricing);
+  const averageCostPerCheck = costEstimate && estimatedChecks > 0 ? costEstimate.usd / estimatedChecks : null;
+  const averageCostPerThousandChecks = averageCostPerCheck === null ? null : averageCostPerCheck * 1000;
+  const missingSuggestions = suggestions.filter((suggestion) => !suggestion.existingTopicId);
+
+  async function submitNewTag(event: FormEvent) {
+    event.preventDefault();
+    if (!newTag.name.trim()) return;
+    setBusy("new");
+    try {
+      await onCreateTag({
+        name: newTag.name.trim(),
+        description: newTag.description.trim()
+      });
+      setNewTag({ name: "", description: "" });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function submitFreeTextTags(event: FormEvent) {
+    event.preventDefault();
+    const parsedTags = parseFreeTextTags(freeTextTags);
+    if (!parsedTags.length) return;
+    setBusy("free-text");
+    try {
+      for (const tag of parsedTags.slice(0, 30)) {
+        await onCreateTag(tag);
+      }
+      setFreeTextTags("");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function saveTag(topic: Topic) {
+    const draft = drafts[topic.id];
+    if (!draft?.name.trim()) return;
+    setBusy(`save-${topic.id}`);
+    try {
+      await onUpdateTag(topic, {
+        name: draft.name.trim(),
+        description: draft.description.trim()
+      });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function deleteTag(topic: Topic) {
+    setBusy(`delete-${topic.id}`);
+    try {
+      await onDeleteTag(topic);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function addSuggestion(suggestion: TagSuggestion) {
+    setBusy(`suggest-${suggestion.name}`);
+    try {
+      await onCreateTag({
+        name: suggestion.name,
+        description: suggestion.description || ""
+      });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function addAllSuggestions() {
+    setBusy("suggest-all");
+    try {
+      for (const suggestion of missingSuggestions.slice(0, 12)) {
+        await onCreateTag({
+          name: suggestion.name,
+          description: suggestion.description || ""
+        });
+      }
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function rerunTagging() {
+    setBusy("rerun");
+    try {
+      await onRerunTagging(requestedLimit);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <section className="view">
+      <div className="view-header">
+        <div>
+          <h1>Tagging</h1>
+          <p>Manage semantic tags and rerun automatic article tagging.</p>
+        </div>
+        <button className="button secondary" type="button" onClick={onRefresh}>
+          <RefreshCcw size={16} />
+          Refresh
+        </button>
+      </div>
+
+      <div className="tagging-layout">
+        <div className="tagging-main">
+          <section className="tagging-run-card">
+            <div>
+              <h2>Run tagging</h2>
+              <p>
+                {autoTaggingEnabled
+                  ? `Uses ${autoTaggingModel} across ${topics.length} stored tag${topics.length === 1 ? "" : "s"}.`
+                  : "LLM tagging is not configured. Set OPENAI_API_KEY or LLM_FILTER_URL to run it."}
+              </p>
+            </div>
+            <label title={tooltips.semanticLimit}>
+              Articles per tag
+              <select value={limit} onChange={(event) => setLimit(event.target.value)}>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+                <option value="all">All articles</option>
+              </select>
+            </label>
+            <div className="tagging-run-action">
+              <button
+                className="button primary"
+                disabled={busy === "rerun" || !topics.length || !autoTaggingEnabled}
+                title={tooltips.rerunTagging}
+                type="button"
+                onClick={rerunTagging}
+              >
+                <Sparkles size={16} />
+                {busy === "rerun" ? "Tagging" : "Rerun tagging"}
+              </button>
+              <div className="cost-note tagging-cost">
+                <span>
+                  {requestedLimit.toLocaleString()} articles/tag x {topics.length.toLocaleString()} tags
+                </span>
+                <span>Up to {estimatedChecks.toLocaleString()} article-tag checks</span>
+                <span>
+                  Estimate: {costEstimate ? formatUsd(costEstimate.usd) : "pricing unavailable"}
+                </span>
+                <span>
+                  Avg:{" "}
+                  {averageCostPerCheck !== null && averageCostPerThousandChecks !== null
+                    ? `${formatPreciseUsd(averageCostPerCheck)} per check / ${formatUsd(averageCostPerThousandChecks)} per 1k`
+                    : "pricing unavailable"}
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <section className="tag-editor-card">
+            <div className="panel-heading">
+              <div>
+                <h2>Stored tags</h2>
+                <span>{topics.length} tags define News Hub sections and automatic tagging targets.</span>
+              </div>
+            </div>
+
+            <form className="tag-create-row" onSubmit={submitNewTag}>
+              <label>
+                Tag
+                <input
+                  placeholder="Slovakia"
+                  value={newTag.name}
+                  onChange={(event) => setNewTag({ ...newTag, name: event.target.value })}
+                />
+              </label>
+              <label>
+                Guidance
+                <input
+                  placeholder="People, places, institutions, aliases"
+                  value={newTag.description}
+                  onChange={(event) => setNewTag({ ...newTag, description: event.target.value })}
+                />
+              </label>
+              <button className="button primary" disabled={busy === "new"} type="submit">
+                {busy === "new" ? "Adding" : "Add tag"}
+              </button>
+            </form>
+
+            <form className="tag-free-text-row" onSubmit={submitFreeTextTags}>
+              <label>
+                Free-text tags
+                <textarea
+                  placeholder={"Slovensko - domaca politika, vlada, regiony\nDonald Trump: USA, administrativne rozhodnutia, NATO\nEnergetika"}
+                  rows={4}
+                  value={freeTextTags}
+                  onChange={(event) => setFreeTextTags(event.target.value)}
+                />
+              </label>
+              <button className="button secondary" disabled={busy === "free-text"} type="submit">
+                {busy === "free-text" ? "Adding" : "Add from text"}
+              </button>
+            </form>
+
+            <div className="tag-list">
+              {loading ? (
+                <div className="empty tag-empty">Loading tags</div>
+              ) : topics.length ? (
+                topics.map((topic) => {
+                  const draft = drafts[topic.id] || { name: topic.name, description: topic.description || "" };
+                  return (
+                    <div className="tag-row" key={topic.id}>
+                      <label>
+                        Tag
+                        <input
+                          value={draft.name}
+                          onChange={(event) =>
+                            setDrafts((current) => ({
+                              ...current,
+                              [topic.id]: {
+                                ...draft,
+                                name: event.target.value
+                              }
+                            }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        Guidance
+                        <input
+                          value={draft.description}
+                          onChange={(event) =>
+                            setDrafts((current) => ({
+                              ...current,
+                              [topic.id]: {
+                                ...draft,
+                                description: event.target.value
+                              }
+                            }))
+                          }
+                        />
+                      </label>
+                      <div className="tag-row-actions">
+                        <button
+                          className="button secondary"
+                          disabled={busy === `save-${topic.id}`}
+                          type="button"
+                          onClick={() => saveTag(topic)}
+                        >
+                          <Save size={16} />
+                          Save
+                        </button>
+                        <button
+                          className="button secondary danger"
+                          disabled={busy === `delete-${topic.id}`}
+                          type="button"
+                          onClick={() => deleteTag(topic)}
+                        >
+                          <X size={16} />
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="empty tag-empty">No tags yet. Add suggestions to start tagging.</div>
+              )}
+            </div>
+          </section>
+        </div>
+
+        <aside className="tag-suggestions-card">
+          <div className="panel-heading">
+            <div>
+              <h2>Suggested tags</h2>
+              <span title={tooltips.tagSuggestion}>Starter tags plus tags seen in recent articles.</span>
+            </div>
+          </div>
+          <div className="tag-suggestion-actions">
+            <button
+              className="button secondary"
+              disabled={!missingSuggestions.length || busy === "suggest-all"}
+              type="button"
+              onClick={addAllSuggestions}
+            >
+              {busy === "suggest-all" ? "Adding" : "Add suggested"}
+            </button>
+          </div>
+          <div className="tag-suggestion-list">
+            {suggestions.map((suggestion) => (
+              <div className="tag-suggestion" key={`${suggestion.source}-${suggestion.name}`}>
+                <div>
+                  <div className="tag-suggestion-name">{suggestion.name}</div>
+                  <div className="tag-suggestion-meta">
+                    <span>{suggestionSourceLabel(suggestion.source)}</span>
+                    {suggestion.count > 0 && <span>{suggestion.count} recent</span>}
+                  </div>
+                  {suggestion.description && <p>{suggestion.description}</p>}
+                </div>
+                <button
+                  className="button secondary"
+                  disabled={Boolean(suggestion.existingTopicId) || busy === `suggest-${suggestion.name}`}
+                  type="button"
+                  onClick={() => addSuggestion(suggestion)}
+                >
+                  {suggestion.existingTopicId ? "Added" : "Add"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </aside>
       </div>
     </section>
   );
@@ -1245,12 +1746,13 @@ function SourcesView({
 function App() {
   const articleRequestId = useRef(0);
   const filtersReady = useRef(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.matchMedia("(max-width: 760px)").matches);
   const [view, setView] = useState<View>("news");
   const [adminMeta, setAdminMeta] = useState<AdminMeta>(defaultAdminMeta);
   const [articles, setArticles] = useState<Article[]>([]);
   const [sources, setSources] = useState<Source[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
+  const [tagSuggestions, setTagSuggestions] = useState<TagSuggestion[]>([]);
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
   const [sourceArticles, setSourceArticles] = useState<Article[]>([]);
   const [filters, setFilters] = useState(emptyNewsFilters);
@@ -1268,14 +1770,16 @@ function App() {
   async function loadSourcesAndTopics() {
     setLoadingSources(true);
     try {
-      const [metaPayload, sourcesPayload, topicsPayload] = await Promise.all([
+      const [metaPayload, sourcesPayload, topicsPayload, suggestionPayload] = await Promise.all([
         fetchJson<AdminMeta>(endpoints.meta),
         fetchJson<{ sources: Source[] }>(endpoints.sources),
-        fetchJson<{ topics: Topic[] }>(endpoints.topics)
+        fetchJson<{ topics: Topic[] }>(endpoints.topics),
+        fetchJson<{ suggestions: TagSuggestion[] }>(endpoints.tagSuggestions)
       ]);
       setAdminMeta(metaPayload || defaultAdminMeta);
       setSources(sourcesPayload.sources || []);
       setTopics(topicsPayload.topics || []);
+      setTagSuggestions(suggestionPayload.suggestions || []);
     } finally {
       setLoadingSources(false);
     }
@@ -1349,6 +1853,24 @@ function App() {
     const nextFilters = { ...filters, q: "", topic: String(payload.topic.id), status: "matched" };
     setFilters(nextFilters);
     setMessage(`${payload.matchedCount} matched, ${payload.evaluatedCount} evaluated`);
+  }
+
+  async function autoTagArticles(limitPerTopic: number) {
+    const payload = await fetchJson<{
+      topicCount: number;
+      evaluatedCount: number;
+      matchedCount: number;
+      rejectedCount: number;
+    }>(endpoints.autoTag, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ limitPerTopic })
+    });
+    await loadSourcesAndTopics();
+    await loadArticles(0, filters);
+    setMessage(
+      `${payload.evaluatedCount} auto-tagged across ${payload.topicCount} topics, ${payload.matchedCount} matched`
+    );
   }
 
   async function translateMissingHeadlines() {
@@ -1434,13 +1956,56 @@ function App() {
     setMessage("Source saved");
   }
 
+  async function createTag(input: { name: string; description: string }) {
+    const payload = await fetchJson<{ topic: Topic }>(endpoints.topics, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: input.name,
+        description: input.description || null
+      })
+    });
+    await loadSourcesAndTopics();
+    setMessage(`Tag "${payload.topic.name}" saved`);
+  }
+
+  async function updateTag(topic: Topic, input: { name: string; description: string }) {
+    const payload = await fetchJson<{ topic: Topic }>(`${endpoints.topics}/${topic.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: input.name,
+        description: input.description || null
+      })
+    });
+    await loadSourcesAndTopics();
+    await loadArticles(0, filters);
+    setMessage(`Tag "${payload.topic.name}" updated`);
+  }
+
+  async function deleteTag(topic: Topic) {
+    await fetchJson<void>(`${endpoints.topics}/${topic.id}`, {
+      method: "DELETE"
+    });
+    await loadSourcesAndTopics();
+    await loadArticles(0, filters);
+    setMessage(`Tag "${topic.name}" deleted`);
+  }
+
+  function changeView(nextView: View) {
+    setView(nextView);
+    if (window.matchMedia("(max-width: 760px)").matches) {
+      setSidebarCollapsed(true);
+    }
+  }
+
   return (
     <div className="admin-layout">
       <Sidebar
         collapsed={sidebarCollapsed}
         currentView={view}
         onToggle={() => setSidebarCollapsed((current) => !current)}
-        onViewChange={setView}
+        onViewChange={changeView}
       />
       <main className="content">
         <div className="topbar">
@@ -1454,7 +2019,20 @@ function App() {
           </button>
           <div className="result-meta">{message}</div>
         </div>
-        {view === "news" ? (
+        {view === "tagging" ? (
+          <TaggingView
+            adminMeta={adminMeta}
+            loading={loadingSources}
+            suggestions={tagSuggestions}
+            topics={topics}
+            totalArticleCount={totalArticleCount}
+            onCreateTag={createTag}
+            onDeleteTag={deleteTag}
+            onRefresh={loadSourcesAndTopics}
+            onRerunTagging={autoTagArticles}
+            onUpdateTag={updateTag}
+          />
+        ) : view === "news" ? (
           <NewsView
             adminMeta={adminMeta}
             articles={articles}
@@ -1474,6 +2052,7 @@ function App() {
               if (filters === emptyNewsFilters) void loadArticles(0, emptyNewsFilters);
             }}
             onSemanticEvaluate={semanticEvaluate}
+            onAutoTagArticles={autoTagArticles}
             onTranslateHeadlines={translateMissingHeadlines}
           />
         ) : (

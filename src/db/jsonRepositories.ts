@@ -32,6 +32,7 @@ function emptyData() {
     },
     sources: [],
     articles: [],
+    articleEmbeddings: [],
     topics: [],
     evaluations: [],
     sourceChecks: []
@@ -165,7 +166,31 @@ function articleWithSource(data: AnyRecord, article: AnyRecord) {
 }
 
 function timestampForArticle(article: AnyRecord) {
-  return Date.parse(article.published_at || article.discovered_at || article.created_at || "") || 0;
+  return Date.parse(article.discovered_at || article.published_at || article.created_at || "") || 0;
+}
+
+function compareArticlesDesc(left: AnyRecord, right: AnyRecord) {
+  const timestampDiff = timestampForArticle(right) - timestampForArticle(left);
+  if (timestampDiff !== 0) return timestampDiff;
+  return (Number(right.id) || 0) - (Number(left.id) || 0);
+}
+
+function hashText(value: any) {
+  const crypto = require("node:crypto");
+  return crypto.createHash("sha256").update(String(value || "")).digest("hex");
+}
+
+function articleEmbeddingText(article: AnyRecord) {
+  return [
+    article.headline,
+    article.headline_sk,
+    article.headline_en,
+    article.context,
+    article.content_text
+  ]
+    .filter(Boolean)
+    .join("\n\n")
+    .slice(0, 12000);
 }
 
 const sourceRepo = {
@@ -328,7 +353,7 @@ const articleRepo = {
     if (filters.from) rows = rows.filter((article) => timestampForArticle(article) >= Date.parse(filters.from));
     if (filters.to) rows = rows.filter((article) => timestampForArticle(article) <= Date.parse(filters.to));
 
-    rows.sort((left, right) => timestampForArticle(right) - timestampForArticle(left));
+    rows.sort(compareArticlesDesc);
     const limit = Math.min(Number(filters.limit) || 50, 200);
     const offset = Number(filters.offset) || 0;
     return rows.slice(offset, offset + limit).map(mapArticle);
@@ -384,7 +409,7 @@ const articleRepo = {
     return data.articles
       .filter((article) => !article.headline_sk || !article.headline_en)
       .map((article) => articleWithSource(data, article))
-      .sort((left, right) => timestampForArticle(right) - timestampForArticle(left))
+      .sort(compareArticlesDesc)
       .slice(0, Math.min(Number(limit) || 200, 1000))
       .map(mapArticle);
   },
@@ -403,9 +428,99 @@ const articleRepo = {
     return data.articles
       .filter((article) => !evaluatedIds.has(article.id))
       .map((article) => articleWithSource(data, article))
-      .sort((left, right) => timestampForArticle(right) - timestampForArticle(left))
+      .sort(compareArticlesDesc)
       .slice(0, Math.min(Number(limit) || 50, maxEvaluationBatchSize))
       .map(mapArticle);
+  },
+
+  async listArticlesMissingContent(limit = 20, options: AnyRecord = {}) {
+    const data = readData();
+    const boundedLimit = Math.min(Number(limit) || 20, 200);
+    return data.articles
+      .filter((article) => {
+        if (!article.url) return false;
+        if (options.force) return true;
+        return !article.extraction_status || article.extraction_status === "pending" || !article.content_text;
+      })
+      .map((article) => articleWithSource(data, article))
+      .sort(compareArticlesDesc)
+      .slice(0, boundedLimit)
+      .map(mapArticle);
+  },
+
+  async listArticlesMissingEmbeddings(model: string, limit = 50) {
+    const data = readData();
+    const boundedLimit = Math.min(Number(limit) || 50, 200);
+    const embeddings = Array.isArray(data.articleEmbeddings) ? data.articleEmbeddings : [];
+    const embeddingByArticleId = new Map(
+      embeddings
+        .filter((embedding) => embedding.model === model)
+        .map((embedding) => [Number(embedding.article_id), embedding])
+    );
+
+    return data.articles
+      .filter((article) => {
+        const text = articleEmbeddingText(article);
+        if (!text) return false;
+        const existing = embeddingByArticleId.get(Number(article.id));
+        return !existing || existing.text_hash !== hashText(text);
+      })
+      .sort(compareArticlesDesc)
+      .slice(0, boundedLimit)
+      .map((article) => ({
+        ...mapArticle(articleWithSource(data, article)),
+        embeddingText: articleEmbeddingText(article),
+        embeddingTextHash: hashText(articleEmbeddingText(article)),
+        wordCount: article.word_count || null,
+        extractionStatus: article.extraction_status || null
+      }))
+  },
+
+  async upsertArticleEmbedding(input: AnyRecord) {
+    return mutate((data) => {
+      if (!Array.isArray(data.articleEmbeddings)) data.articleEmbeddings = [];
+      const now = nowIso();
+      const row = {
+        article_id: Number(input.articleId),
+        model: input.model,
+        embedding: input.embedding,
+        dimensions: Array.isArray(input.embedding) ? input.embedding.length : 0,
+        text_hash: input.textHash,
+        created_at: now,
+        updated_at: now
+      };
+      const index = data.articleEmbeddings.findIndex(
+        (embedding) => Number(embedding.article_id) === row.article_id && embedding.model === row.model
+      );
+      if (index >= 0) {
+        data.articleEmbeddings[index] = {
+          ...data.articleEmbeddings[index],
+          ...row,
+          created_at: data.articleEmbeddings[index].created_at || now
+        };
+      } else {
+        data.articleEmbeddings.push(row);
+      }
+      return row;
+    });
+  },
+
+  async listArticleEmbeddings(model: string) {
+    const data = readData();
+    const articlesById = new Map(data.articles.map((article) => [Number(article.id), article]));
+    return (data.articleEmbeddings || [])
+      .filter((embedding) => embedding.model === model && Array.isArray(embedding.embedding))
+      .map((embedding) => {
+        const article = articlesById.get(Number(embedding.article_id));
+        if (!article) return null;
+        return {
+          article: mapArticle(articleWithSource(data, article)),
+          embedding: embedding.embedding,
+          model: embedding.model,
+          textHash: embedding.text_hash
+        };
+      })
+      .filter(Boolean);
   }
 };
 

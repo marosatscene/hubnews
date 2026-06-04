@@ -1,12 +1,14 @@
 create extension if not exists pgcrypto;
 
 create or replace function public.set_updated_at()
-returns trigger as $$
+returns trigger
+language plpgsql
+as '
 begin
   new.updated_at = now();
   return new;
 end;
-$$ language plpgsql;
+';
 
 create table if not exists public.sources (
   id bigint generated always as identity primary key,
@@ -82,30 +84,19 @@ alter table public.articles add column if not exists extraction_status text not 
 alter table public.articles add column if not exists extraction_error text;
 alter table public.articles add column if not exists extracted_at timestamptz;
 
-do $$
-begin
-  if not exists (
-    select 1
-    from pg_constraint
-    where conname = 'articles_extraction_provider_check'
-      and conrelid = 'public.articles'::regclass
-  ) then
-    alter table public.articles
-      add constraint articles_extraction_provider_check
-      check (extraction_provider is null or extraction_provider in ('direct', 'firecrawl'));
-  end if;
+alter table public.articles
+  drop constraint if exists articles_extraction_provider_check;
 
-  if not exists (
-    select 1
-    from pg_constraint
-    where conname = 'articles_extraction_status_check'
-      and conrelid = 'public.articles'::regclass
-  ) then
-    alter table public.articles
-      add constraint articles_extraction_status_check
-      check (extraction_status in ('pending', 'extracted', 'failed', 'skipped'));
-  end if;
-end $$;
+alter table public.articles
+  add constraint articles_extraction_provider_check
+  check (extraction_provider is null or extraction_provider in ('direct', 'firecrawl'));
+
+alter table public.articles
+  drop constraint if exists articles_extraction_status_check;
+
+alter table public.articles
+  add constraint articles_extraction_status_check
+  check (extraction_status in ('pending', 'extracted', 'failed', 'skipped'));
 
 create index if not exists idx_articles_source_id on public.articles(source_id);
 create index if not exists idx_articles_published_at on public.articles(published_at);

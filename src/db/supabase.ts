@@ -1,17 +1,17 @@
 const { createClient } = require("@supabase/supabase-js");
-const { supabaseServiceRoleKey, supabaseUrl } = require("../config");
+const { supabaseSecretKey, supabaseUrl } = require("../config");
 
 function assertSupabaseConfig() {
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
+  if (!supabaseUrl || !supabaseSecretKey) {
     throw new Error(
-      "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY. Set them in .env or Vercel environment variables."
+      "Missing SUPABASE_URL or SUPABASE_SECRET_KEY. Set them in .env or Vercel environment variables. SUPABASE_SERVICE_ROLE_KEY is still accepted as a legacy fallback."
     );
   }
 }
 
 function createSupabaseClient() {
   assertSupabaseConfig();
-  return createClient(supabaseUrl, supabaseServiceRoleKey, {
+  return createClient(supabaseUrl, supabaseSecretKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false

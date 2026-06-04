@@ -36,6 +36,9 @@ function createRepos(overrides: AnyRecord = {}) {
       async listTopics() {
         return [];
       },
+      async getTopic() {
+        return null;
+      },
       async createTopic(input) {
         return {
           id: 1,
@@ -49,6 +52,9 @@ function createRepos(overrides: AnyRecord = {}) {
           name: patch.name || "Updated",
           description: patch.description || null
         };
+      },
+      async deleteTopic() {
+        return undefined;
       }
     },
     evaluationRepo: {
@@ -140,6 +146,7 @@ async function withAdminApp(options: AnyRecord, callback: any) {
       adminUser: options.adminUser,
       adminPassword: options.adminPassword,
       adminHtmlPath,
+      autoTagArticlesForTopics: options.autoTagArticlesForTopics,
       filterArticlesForTopic: options.filterArticlesForTopic,
       translateHeadlines: options.translateHeadlines,
       aggregateSourceById: options.aggregateSourceById,
@@ -442,6 +449,94 @@ test("admin sources and topics APIs are read-only list endpoints", async () => {
         }
       ]);
       assert.deepEqual(topics.topics, [{ id: 2, name: "Energy", description: "Power markets" }]);
+    }
+  );
+});
+
+test("admin tag endpoints suggest, create, update, and delete protected tags", async () => {
+  const topics = [{ id: 2, name: "Energy", description: "Power markets" }];
+  const deletedIds = [];
+  let createInput;
+  let updateInput;
+
+  await withAdminApp(
+    {
+      adminUser: "admin",
+      adminPassword: "secret",
+      repos: {
+        topicRepo: {
+          async listTopics() {
+            return topics;
+          },
+          async getTopic(id) {
+            return topics.find((topic) => topic.id === Number(id)) || null;
+          },
+          async createTopic(input) {
+            createInput = input;
+            const topic = { id: 3, name: input.name, description: input.description || null };
+            topics.push(topic);
+            return topic;
+          },
+          async updateTopic(id, input) {
+            updateInput = { id, input };
+            const topic = topics.find((item) => item.id === Number(id));
+            Object.assign(topic, input);
+            return topic;
+          },
+          async deleteTopic(id) {
+            deletedIds.push(id);
+          }
+        },
+        articleRepo: {
+          async listArticles(filters) {
+            assert.deepEqual(filters, { limit: 200, offset: 0 });
+            return [
+              { id: 10, topics: ["Energy", "NATO"] },
+              { id: 11, topics: ["NATO", "Ukraine"] }
+            ];
+          }
+        }
+      }
+    },
+    async (get) => {
+      const headers = {
+        Authorization: authHeader(),
+        "Content-Type": "application/json"
+      };
+
+      const suggestionsResponse = await get("/admin/api/tag-suggestions", { headers });
+      assert.equal(suggestionsResponse.status, 200);
+      const suggestions = await suggestionsResponse.json();
+      const energy = suggestions.suggestions.find((suggestion) => suggestion.name === "Energy");
+      const nato = suggestions.suggestions.find((suggestion) => suggestion.name === "NATO");
+      assert.equal(energy.existingTopicId, 2);
+      assert.equal(nato.count, 2);
+
+      const createResponse = await get("/admin/api/topics", {
+        method: "POST",
+        headers,
+        body: { name: "NATO", description: "Alliance and defense" }
+      });
+      assert.equal(createResponse.status, 201);
+      assert.deepEqual(createInput, { name: "NATO", description: "Alliance and defense" });
+
+      const updateResponse = await get("/admin/api/topics/2", {
+        method: "PATCH",
+        headers,
+        body: { name: "Energy prices", description: "Gas, oil, electricity" }
+      });
+      assert.equal(updateResponse.status, 200);
+      assert.deepEqual(updateInput, {
+        id: 2,
+        input: { name: "Energy prices", description: "Gas, oil, electricity" }
+      });
+
+      const deleteResponse = await get("/admin/api/topics/2", {
+        method: "DELETE",
+        headers
+      });
+      assert.equal(deleteResponse.status, 204);
+      assert.deepEqual(deletedIds, [2]);
     }
   );
 });
@@ -781,6 +876,62 @@ test("admin semantic filter creates a topic, evaluates articles, and stores resu
         "model"
       ]);
       assert.equal(JSON.stringify(body).includes("privatePromptTrace"), false);
+    }
+  );
+});
+
+test("admin auto-tag endpoint runs stored topics with a bounded limit", async () => {
+  let receivedOptions;
+
+  await withAdminApp(
+    {
+      adminUser: "admin",
+      adminPassword: "secret",
+      autoTagArticlesForTopics: async (options) => {
+        receivedOptions = options;
+        return {
+          model: "mock-nano",
+          topicCount: 2,
+          limitPerTopic: options.limitPerTopic,
+          evaluatedCount: 3,
+          matchedCount: 2,
+          rejectedCount: 1,
+          topics: []
+        };
+      }
+    },
+    async (get) => {
+      const blocked = await get("/admin/api/auto-tag/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: { limitPerTopic: 20 }
+      });
+      assert.equal(blocked.status, 401);
+
+      const response = await get("/admin/api/auto-tag/run", {
+        method: "POST",
+        headers: {
+          Authorization: authHeader(),
+          "Content-Type": "application/json"
+        },
+        body: { limitPerTopic: 5000 }
+      });
+
+      assert.equal(response.status, 200);
+      assert.equal(receivedOptions.limitPerTopic, 1000);
+      assert.ok(receivedOptions.articleRepo);
+      assert.ok(receivedOptions.topicRepo);
+      assert.ok(receivedOptions.evaluationRepo);
+      assert.equal(typeof receivedOptions.filterArticlesForTopic, "function");
+      assert.deepEqual(await response.json(), {
+        model: "mock-nano",
+        topicCount: 2,
+        limitPerTopic: 1000,
+        evaluatedCount: 3,
+        matchedCount: 2,
+        rejectedCount: 1,
+        topics: []
+      });
     }
   );
 });

@@ -10,14 +10,14 @@ function isAuthorized(req) {
   return req.get("authorization") === `Bearer ${vercelCronSecret}`;
 }
 
-router.get(
-  "/aggregate",
-  asyncRoute(async (req, res) => {
-    if (!isAuthorized(req)) return res.status(401).json({ error: "Unauthorized" });
+const runAggregation = asyncRoute(async (req, res) => {
+  if (!isAuthorized(req)) return res.status(401).json({ error: "Unauthorized" });
 
-    const result = await aggregateSources();
-    return res.json(result);
-  })
-);
+  const result = await aggregateSources();
+  return res.json(result);
+});
+
+router.get("/", runAggregation);
+router.get("/aggregate", runAggregation);
 
 module.exports = router;

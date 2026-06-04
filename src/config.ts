@@ -10,13 +10,20 @@ function toInteger(value, fallback) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+const supabaseSecretKey =
+  process.env.SUPABASE_SECRET_KEY ||
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  "";
+
 module.exports = {
   port: toInteger(process.env.PORT, 4000),
   supabaseUrl: process.env.SUPABASE_URL || "",
-  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+  supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY || "",
+  supabaseSecretKey,
+  supabaseServiceRoleKey: supabaseSecretKey,
   storageDriver:
     process.env.STORAGE_DRIVER ||
-    (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY ? "supabase" : "json"),
+    (process.env.SUPABASE_URL && supabaseSecretKey ? "supabase" : "json"),
   aggregatorEnabled: toBoolean(process.env.AGGREGATOR_ENABLED, true),
   aggregatorCron: process.env.AGGREGATOR_CRON || "*/5 * * * *",
   defaultCheckIntervalMinutes: toInteger(process.env.DEFAULT_CHECK_INTERVAL_MINUTES, 60),
@@ -29,10 +36,18 @@ module.exports = {
   llmFilterUrl: process.env.LLM_FILTER_URL || "",
   openaiApiKey: process.env.OPENAI_API_KEY || "",
   openaiFilterModel: process.env.OPENAI_FILTER_MODEL || "gpt-4.1-mini",
+  openaiAutoTaggingModel:
+    process.env.OPENAI_AUTO_TAGGING_MODEL ||
+    "gpt-5.4-nano",
   openaiTranslationModel: process.env.OPENAI_TRANSLATION_MODEL || "gpt-4.1-mini",
   openaiResponsesApiUrl:
     process.env.OPENAI_RESPONSES_API_URL || "https://api.openai.com/v1/responses",
+  openaiEmbeddingsModel: process.env.OPENAI_EMBEDDINGS_MODEL || "text-embedding-3-small",
+  openaiEmbeddingsApiUrl:
+    process.env.OPENAI_EMBEDDINGS_API_URL || "https://api.openai.com/v1/embeddings",
   maxEvaluationBatchSize: toInteger(process.env.MAX_EVALUATION_BATCH_SIZE, 1000),
+  autoTaggingEnabled: toBoolean(process.env.AUTO_TAGGING_ENABLED, true),
+  autoTaggingLimitPerTopic: toInteger(process.env.AUTO_TAGGING_LIMIT_PER_TOPIC, 25),
   llmFilterBatchSize: toInteger(process.env.LLM_FILTER_BATCH_SIZE, 50),
   llmFilterConcurrency: toInteger(process.env.LLM_FILTER_CONCURRENCY, 3),
   headlineTranslationBatchSize: toInteger(process.env.HEADLINE_TRANSLATION_BATCH_SIZE, 25),

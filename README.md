@@ -30,9 +30,24 @@ npm start
 
 1. Create a Supabase project.
 2. Run [supabase/schema.sql](/Users/maros/hubnews/supabase/schema.sql) in the Supabase SQL editor.
-3. Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `.env` for local development.
+3. Set `SUPABASE_URL` and `SUPABASE_SECRET_KEY` in `.env` for local development.
 4. Add the same values as Vercel environment variables for deployment.
 5. Run `npm run seed` once to insert the starter sources.
+
+`SUPABASE_SECRET_KEY` is used only server-side for backend storage and imports. The legacy `SUPABASE_SERVICE_ROLE_KEY` env var is still accepted as a fallback. `SUPABASE_PUBLISHABLE_KEY` is optional and only needed if browser code is later changed to call Supabase directly.
+
+### Import Local JSON Data to Supabase
+
+If you have been running locally with `STORAGE_DRIVER=json`, migrate the ignored local database into Supabase before going live:
+
+```sh
+STORAGE_DRIVER=supabase npm run import:json:supabase -- --dry-run
+STORAGE_DRIVER=supabase npm run import:json:supabase -- --file data/hubnews.local.json
+```
+
+The importer upserts `sources`, `topics`, `articles`, and `article_topic_evaluations` by their natural unique keys and maps local JSON IDs to Supabase IDs. It does not require local IDs to match Supabase identity IDs.
+
+To also copy crawl history logs, add `--include-checks`. Source check history is inserted, not upserted, so do not run that option repeatedly unless duplicate history rows are acceptable.
 
 ## Data Model
 
@@ -47,9 +62,14 @@ npm start
 Set `OPENAI_API_KEY` to use direct OpenAI headline/topic filtering. Optional settings:
 
 - `OPENAI_FILTER_MODEL`, default `gpt-4.1-mini`
+- `OPENAI_AUTO_TAGGING_MODEL`, default `gpt-5.4-nano`
 - `OPENAI_RESPONSES_API_URL`, default `https://api.openai.com/v1/responses`
+- `AUTO_TAGGING_ENABLED`, default `true`
+- `AUTO_TAGGING_LIMIT_PER_TOPIC`, default `25`
 
 `POST /topics/:id/evaluate` classifies unevaluated articles for a topic and stores results in `article_topic_evaluations`. If `LLM_FILTER_URL` is set, the backend uses that external webhook instead of direct OpenAI. If neither OpenAI nor `LLM_FILTER_URL` is configured, it falls back to keyword matching.
+
+Newly inserted articles are automatically evaluated against existing topics when aggregation runs. Use `POST /admin/api/auto-tag/run` to backfill existing unevaluated article/topic pairs from the admin UI or API.
 
 ## Main Endpoints
 
@@ -58,13 +78,15 @@ Set `OPENAI_API_KEY` to use direct OpenAI headline/topic filtering. Optional set
 - `GET /admin/api/articles` authenticated admin article list
 - `GET /admin/api/sources` authenticated admin source list
 - `GET /admin/api/topics` authenticated admin topic list
+- `POST /admin/api/auto-tag/run` authenticated admin backfill for stored topic tags
 - `GET /sources`
 - `POST /sources`
 - `PATCH /sources/:id`
 - `DELETE /sources/:id` disables a source
 - `POST /sources/:id/check` runs aggregation for one source
 - `POST /aggregation/run` runs a bounded aggregation batch; pass `{ "force": true, "limit": 2 }` for a manual local smoke test
-- `GET /cron/aggregate` Vercel Cron entrypoint for due-source aggregation
+- `GET /cron/aggregate` local/direct cron entrypoint for due-source aggregation
+- `GET /api/cron-aggregate` Vercel Cron entrypoint for due-source aggregation
 - `GET /articles`
 - `GET /articles/:id`
 - `GET /topics`
@@ -77,8 +99,8 @@ For Vercel, prefix these with `/api`.
 ## Vercel Setup
 
 - Deploy the repo to Vercel.
-- Add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_USER`, `ADMIN_PASSWORD`, and optionally `CRON_SECRET` and `FIRECRAWL_API_KEY`.
-- [vercel.json](/Users/maros/hubnews/vercel.json) schedules `/api/cron/aggregate` every 15 minutes.
+- Add `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `ADMIN_USER`, `ADMIN_PASSWORD`, and optionally `CRON_SECRET` and `FIRECRAWL_API_KEY`.
+- [vercel.json](/Users/maros/hubnews/vercel.json) schedules `/api/cron-aggregate` every 15 minutes.
 - Vercel Cron sends a `GET` request. If `CRON_SECRET` is set, the endpoint expects `Authorization: Bearer <CRON_SECRET>`.
 - `/admin` is rewritten to `/api/admin` on Vercel and remains Basic-Auth protected.
 

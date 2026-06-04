@@ -5,13 +5,16 @@
   "description": "Topic-driven news aggregation backend",
   "main": "dist/src/server.js",
   "scripts": {
-    "build": "npm run build:server && npm run build:admin",
+    "build": "npm run build:server && npm run build:admin && npm run build:news-hub",
     "build:admin": "vite build --config admin/vite.config.ts",
+    "build:news-hub": "vite build --config news-hub/vite.config.ts",
     "build:server": "tsc -p tsconfig.json",
     "dev": "tsx watch src/server.ts",
+    "dev:news-hub": "vite --config news-hub/vite.config.ts",
     "start": "node dist/src/server.js",
     "migrate": "tsx src/db/migrate.ts",
     "seed": "tsx src/db/seed.ts",
+    "import:json:supabase": "tsx src/db/importJsonToSupabase.ts",
     "aggregate": "tsx src/jobs/runAggregation.ts",
     "test": "node --import tsx --test test/*.test.ts"
   },
@@ -33,6 +36,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/morgan": "^1.9.10",
@@ -40,6 +44,7 @@
     "@types/react": "^19.2.16",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
+    "tailwindcss": "^4.3.0",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "vite": "^8.0.16"

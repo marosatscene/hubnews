@@ -215,6 +215,11 @@ async function filterArticleBatch(topic: AnyRecord, articles: AnyRecord[], optio
   const filterUrl = options.filterUrl || llmFilterUrl;
   if (filterUrl) return callExternalFilter(topic, articles, filterUrl);
   if (options.apiKey || openaiApiKey) return callOpenAIFilter(topic, articles, options);
+  if (options.requireLlm) {
+    const error: any = new Error("LLM tagging requires OPENAI_API_KEY or LLM_FILTER_URL");
+    error.status = 400;
+    throw error;
+  }
   return keywordFallback(topic, articles);
 }
 

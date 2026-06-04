@@ -1,17 +1,54 @@
 {
+  "functions": {
+    "api/[...path].ts": {
+      "includeFiles": "public/**"
+    }
+  },
   "rewrites": [
+    {
+      "source": "/",
+      "destination": "/api/news-hub-root"
+    },
+    {
+      "source": "/admin/assets/:path*",
+      "destination": "/api/admin-asset?path=:path*"
+    },
+    {
+      "source": "/admin/api/:path*",
+      "destination": "/api/admin-api?path=:path*"
+    },
     {
       "source": "/admin",
       "destination": "/api/admin"
     },
     {
-      "source": "/admin/(.*)",
-      "destination": "/api/admin/$1"
+      "source": "/admin/",
+      "destination": "/api/admin"
+    },
+    {
+      "source": "/admin/:path*",
+      "destination": "/api/admin"
+    },
+    {
+      "source": "/news-hub/assets/:path*",
+      "destination": "/api/news-hub-asset?path=:path*"
+    },
+    {
+      "source": "/news-hub",
+      "destination": "/api/news-hub-root"
+    },
+    {
+      "source": "/news-hub/",
+      "destination": "/api/news-hub-root"
+    },
+    {
+      "source": "/news-hub/:path*",
+      "destination": "/api/news-hub-root"
     }
   ],
   "crons": [
     {
-      "path": "/api/cron/aggregate",
+      "path": "/api/cron-aggregate",
       "schedule": "*/15 * * * *"
     }
   ]

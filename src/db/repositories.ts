@@ -92,6 +92,16 @@ function mapArticleEvaluation(row: any) {
   };
 }
 
+function articleTimestamp(article: AnyRecord) {
+  return Date.parse(article.discoveredAt || article.publishedAt || article.createdAt || "") || 0;
+}
+
+function compareArticlesDesc(left: AnyRecord, right: AnyRecord) {
+  const timestampDiff = articleTimestamp(right) - articleTimestamp(left);
+  if (timestampDiff !== 0) return timestampDiff;
+  return (Number(right.id) || 0) - (Number(left.id) || 0);
+}
+
 function sourceToRow(input: AnyRecord) {
   const row: AnyRecord = {};
   if (input.name !== undefined) row.name = input.name;
@@ -244,18 +254,21 @@ const articleRepo = {
 
       const limit = Math.min(Number(filters.limit) || 50, 200);
       const offset = Number(filters.offset) || 0;
-      const { data, error } = await query.range(offset, offset + limit - 1);
+      const { data, error } = await query.limit(Math.max(offset + limit, limit));
       throwIfError(error);
 
-      return data.map((row: any) =>
-        mapArticle({
+      return data
+        .map((row: any) =>
+          mapArticle({
           ...row.articles,
           evaluation_status: row.status,
           evaluation_confidence: row.confidence,
           evaluation_reason: row.reason,
           evaluated_at: row.checked_at
-        })
-      );
+          })
+        )
+        .sort(compareArticlesDesc)
+        .slice(offset, offset + limit);
     }
 
     let query = supabase.from("articles").select("*, sources(name)");
@@ -271,8 +284,9 @@ const articleRepo = {
     const limit = Math.min(Number(filters.limit) || 50, 200);
     const offset = Number(filters.offset) || 0;
     const { data, error } = await query
-      .order("published_at", { ascending: false, nullsFirst: false })
       .order("discovered_at", { ascending: false })
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: false })
       .range(offset, offset + limit - 1);
     throwIfError(error);
     return data.map(mapArticle);
@@ -350,6 +364,7 @@ const articleRepo = {
       .or("headline_sk.is.null,headline_en.is.null")
       .order("published_at", { ascending: false, nullsFirst: false })
       .order("discovered_at", { ascending: false })
+      .order("id", { ascending: false })
       .limit(boundedLimit);
     throwIfError(error);
     return data.map(mapArticle);
@@ -381,7 +396,24 @@ const articleRepo = {
     const { data, error } = await query
       .order("published_at", { ascending: false, nullsFirst: false })
       .order("discovered_at", { ascending: false })
+      .order("id", { ascending: false })
       .limit(Math.min(Number(limit) || 50, maxEvaluationBatchSize));
+    throwIfError(error);
+    return data.map(mapArticle);
+  },
+
+  async listArticlesMissingContent(limit = 20, options: AnyRecord = {}) {
+    let query = supabase.from("articles").select("*, sources(name)");
+
+    if (!options.force) {
+      query = query.or("extraction_status.eq.pending,content_text.is.null");
+    }
+
+    const { data, error } = await query
+      .order("discovered_at", { ascending: false })
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: false })
+      .limit(Math.min(Number(limit) || 20, 200));
     throwIfError(error);
     return data.map(mapArticle);
   }

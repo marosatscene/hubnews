@@ -3,10 +3,13 @@ const path = require("node:path");
 const { createBasicAuth } = require("../lib/basicAuth");
 const { asyncRoute } = require("../lib/asyncRoute");
 const {
+  autoTaggingEnabled,
+  autoTaggingLimitPerTopic,
   llmFilterUrl,
   maxEvaluationBatchSize,
   headlineTranslationBackfillLimit,
   openaiApiKey,
+  openaiAutoTaggingModel,
   openaiFilterModel
 } = require("../config");
 const { cleanText, truncate } = require("../lib/text");
@@ -16,14 +19,63 @@ const {
 } = require("../services/aggregator");
 const { filterArticlesForTopic: defaultFilterArticlesForTopic } = require("../services/headlineFilter");
 const { translateHeadlines: defaultTranslateHeadlines } = require("../services/headlineTranslator");
-const { sourceUpdateSchema, validate } = require("../validators");
+const { autoTagArticlesForTopics: defaultAutoTagArticlesForTopics } = require("../services/autoTagger");
+const {
+  sourceUpdateSchema,
+  topicCreateSchema,
+  topicUpdateSchema,
+  validate
+} = require("../validators");
 
 const DEFAULT_PAGE_SIZE = 25;
 const MAX_PAGE_SIZE = 200;
-const DEFAULT_ADMIN_HTML_PATH = path.join(__dirname, "../../public/admin/index.html");
-const DEFAULT_ADMIN_ASSETS_PATH = path.join(__dirname, "../../public/admin/assets");
+const DEFAULT_ADMIN_HTML_PATH = path.join(process.cwd(), "public/admin/index.html");
+const DEFAULT_ADMIN_ASSETS_PATH = path.join(process.cwd(), "public/admin/assets");
 
 type AnyRecord = Record<string, any>;
+
+const starterTagSuggestions = [
+  {
+    name: "Slovensko",
+    description: "Slovak politics, institutions, economy, public services, regions, and Slovak public figures."
+  },
+  {
+    name: "Svet",
+    description: "Major global events, foreign policy, diplomacy, international institutions, and cross-border risks."
+  },
+  {
+    name: "Európska únia",
+    description: "EU institutions, Brussels policy, European Parliament, Commission, Council, and member-state decisions."
+  },
+  {
+    name: "Bezpečnosť",
+    description: "Defense, NATO, armed conflict, cyber security, intelligence, strategic risks, and military policy."
+  },
+  {
+    name: "Ekonomika",
+    description: "Markets, companies, budgets, taxes, jobs, industry, trade, inflation, and economic policy."
+  },
+  {
+    name: "Energetika",
+    description: "Energy prices, electricity, gas, oil, renewables, nuclear power, grids, and energy security."
+  },
+  {
+    name: "Ukrajina",
+    description: "War in Ukraine, Ukrainian politics, reconstruction, diplomacy, sanctions, and regional impact."
+  },
+  {
+    name: "Rusko",
+    description: "Russian politics, war, economy, sanctions, foreign policy, and Kremlin-linked institutions."
+  },
+  {
+    name: "Donald Trump",
+    description: "Donald Trump, US administration, elections, policy decisions, allies, tariffs, NATO, and global impact."
+  },
+  {
+    name: "Technológie",
+    description: "AI, big tech, cybersecurity, platforms, chips, digital government, startups, and regulation."
+  }
+];
 
 function parsePositiveInt(value: any, fallback: number, max = MAX_PAGE_SIZE) {
   if (value === undefined || value === null || value === "") return fallback;
@@ -58,7 +110,7 @@ function optionalString(value: any) {
 }
 
 function dateValue(article: AnyRecord) {
-  return article.publishedAt || article.discoveredAt || article.createdAt || null;
+  return article.discoveredAt || article.publishedAt || article.createdAt || null;
 }
 
 function toTimestamp(value: any) {
@@ -94,7 +146,9 @@ function matchesAdminFilters(article: AnyRecord, filters: AnyRecord) {
 function sortArticlesByDateDesc(left: AnyRecord, right: AnyRecord) {
   const leftTimestamp = toTimestamp(dateValue(left)) || 0;
   const rightTimestamp = toTimestamp(dateValue(right)) || 0;
-  return rightTimestamp - leftTimestamp;
+  const timestampDiff = rightTimestamp - leftTimestamp;
+  if (timestampDiff !== 0) return timestampDiff;
+  return (Number(right.id) || 0) - (Number(left.id) || 0);
 }
 
 function articleSnippet(article: AnyRecord) {
@@ -194,6 +248,90 @@ function serializeTopic(topic: AnyRecord) {
   };
 }
 
+function tagKey(name: any) {
+  return cleanText(String(name || "")).toLowerCase();
+}
+
+function firstNonEmpty(...values: any[]) {
+  for (const value of values) {
+    const cleaned = cleanText(String(value || ""));
+    if (cleaned) return cleaned;
+  }
+  return "";
+}
+
+async function tagSuggestions(topicRepo: AnyRecord, articleRepo: AnyRecord) {
+  const topics = await topicRepo.listTopics();
+  const existingByKey: Map<string, AnyRecord> = new Map(
+    topics.map((topic: AnyRecord) => [tagKey(topic.name), topic])
+  );
+  const suggestionsByKey: Map<string, AnyRecord> = new Map();
+
+  function addSuggestion(input: AnyRecord) {
+    const name = firstNonEmpty(input.name);
+    if (!name) return;
+    const key = tagKey(name);
+    const existing = existingByKey.get(key);
+    const current = suggestionsByKey.get(key) || {
+      name,
+      description: input.description || existing?.description || null,
+      source: input.source || "recent",
+      count: 0,
+      existingTopicId: existing?.id || null
+    };
+
+    suggestionsByKey.set(key, {
+      ...current,
+      description: firstNonEmpty(current.description, input.description, existing?.description) || null,
+      source: current.source === "existing" || input.source === "existing" ? "existing" : current.source,
+      count: current.count + Number(input.count || 0),
+      existingTopicId: current.existingTopicId || existing?.id || null
+    });
+  }
+
+  for (const topic of topics) {
+    addSuggestion({
+      name: topic.name,
+      description: topic.description,
+      source: "existing",
+      count: 0
+    });
+  }
+
+  for (const suggestion of starterTagSuggestions) {
+    addSuggestion({
+      ...suggestion,
+      source: "starter",
+      count: 0
+    });
+  }
+
+  const articles = await articleRepo.listArticles({ limit: 200, offset: 0 });
+  for (const article of articles) {
+    const seen = new Set();
+    for (const topic of article.topics || []) {
+      const name = cleanText(String(topic || ""));
+      const key = tagKey(name);
+      if (!name || seen.has(key)) continue;
+      seen.add(key);
+      addSuggestion({
+        name,
+        source: "recent",
+        count: 1
+      });
+    }
+  }
+
+  return [...suggestionsByKey.values()]
+    .sort((left: AnyRecord, right: AnyRecord) => {
+      if (left.source === "existing" && right.source !== "existing") return -1;
+      if (right.source === "existing" && left.source !== "existing") return 1;
+      if (right.count !== left.count) return right.count - left.count;
+      return left.name.localeCompare(right.name);
+    })
+    .slice(0, 40);
+}
+
 function readArticleFilters(query: AnyRecord) {
   const limit = parsePositiveInt(query.pageSize || query.limit, DEFAULT_PAGE_SIZE);
   const offset = parseOffset(query.offset);
@@ -233,18 +371,34 @@ function readHeadlineTranslationInput(body: AnyRecord) {
   };
 }
 
+function readAutoTagInput(body: AnyRecord) {
+  return {
+    limitPerTopic: parsePositiveInt(body.limitPerTopic || body.limit, autoTaggingLimitPerTopic, maxEvaluationBatchSize)
+  };
+}
+
 function pricingForModel(model: string) {
   const prices: AnyRecord = {
     "gpt-4.1-mini": {
       inputUsdPerMillion: 0.4,
       outputUsdPerMillion: 1.6,
       sourceUrl: "https://platform.openai.com/docs/models/gpt-4.1-mini"
+    },
+    "gpt-4.1-nano": {
+      inputUsdPerMillion: 0.1,
+      outputUsdPerMillion: 0.4,
+      sourceUrl: "https://developers.openai.com/api/docs/models/gpt-4.1-nano"
+    },
+    "gpt-5.4-nano": {
+      inputUsdPerMillion: 0.2,
+      outputUsdPerMillion: 1.25,
+      sourceUrl: "https://developers.openai.com/api/docs/models/gpt-5.4-nano"
     }
   };
   return prices[model] || null;
 }
 
-function llmMeta() {
+function llmMeta(model = openaiFilterModel, options: AnyRecord = {}) {
   if (llmFilterUrl) {
     return {
       provider: "external",
@@ -257,9 +411,18 @@ function llmMeta() {
   if (openaiApiKey) {
     return {
       provider: "openai",
-      model: openaiFilterModel,
+      model,
       configured: true,
-      pricing: pricingForModel(openaiFilterModel)
+      pricing: pricingForModel(model)
+    };
+  }
+
+  if (options.allowKeywordFallback === false) {
+    return {
+      provider: "unconfigured",
+      model,
+      configured: false,
+      pricing: pricingForModel(model)
     };
   }
 
@@ -268,6 +431,15 @@ function llmMeta() {
     model: "keyword-fallback",
     configured: true,
     pricing: null
+  };
+}
+
+function autoTaggingMeta() {
+  const meta = llmMeta(openaiAutoTaggingModel, { allowKeywordFallback: false });
+  return {
+    ...meta,
+    enabled: autoTaggingEnabled,
+    limitPerTopic: autoTaggingLimitPerTopic
   };
 }
 
@@ -394,6 +566,8 @@ function createAdminRouter(options: AnyRecord = {}) {
   const topicRepo = options.topicRepo;
   const filterArticlesForTopic =
     options.filterArticlesForTopic || defaultFilterArticlesForTopic;
+  const autoTagArticlesForTopics =
+    options.autoTagArticlesForTopics || defaultAutoTagArticlesForTopics;
   const translateHeadlines =
     options.translateHeadlines || defaultTranslateHeadlines;
   const aggregateMissingSources =
@@ -426,6 +600,7 @@ function createAdminRouter(options: AnyRecord = {}) {
     asyncRoute(async (_req, res) => {
       res.json({
         llm: llmMeta(),
+        autoTagging: autoTaggingMeta(),
         maxEvaluationBatchSize
       });
     })
@@ -470,12 +645,13 @@ function createAdminRouter(options: AnyRecord = {}) {
           offset: filters.topicId ? 0 : filters.offset
         };
 
-        articles = await articleRepo.listArticles(repoFilters);
+        articles = (await articleRepo.listArticles(repoFilters)).sort(sortArticlesByDateDesc);
       }
 
       if (filters.topicId) {
         articles = articles
           .filter((article) => matchesAdminFilters(article, filters))
+          .sort(sortArticlesByDateDesc)
           .slice(filters.offset, filters.offset + filters.limit);
       }
 
@@ -540,6 +716,43 @@ function createAdminRouter(options: AnyRecord = {}) {
   );
 
   router.post(
+    "/api/topics",
+    asyncRoute(async (req, res) => {
+      const input = validate(topicCreateSchema, req.body || {});
+      const topic = await findOrCreateTopic(topicRepo, input);
+      res.status(201).json({ topic: serializeTopic(topic) });
+    })
+  );
+
+  router.patch(
+    "/api/topics/:id",
+    asyncRoute(async (req, res) => {
+      const id = parseRequiredId(req.params.id, "topic");
+      if (!(await topicRepo.getTopic(id))) return res.status(404).json({ error: "Topic not found" });
+      const input = validate(topicUpdateSchema, req.body || {});
+      const topic = await topicRepo.updateTopic(id, input);
+      res.json({ topic: serializeTopic(topic) });
+    })
+  );
+
+  router.delete(
+    "/api/topics/:id",
+    asyncRoute(async (req, res) => {
+      const id = parseRequiredId(req.params.id, "topic");
+      if (!(await topicRepo.getTopic(id))) return res.status(404).json({ error: "Topic not found" });
+      await topicRepo.deleteTopic(id);
+      res.status(204).send();
+    })
+  );
+
+  router.get(
+    "/api/tag-suggestions",
+    asyncRoute(async (_req, res) => {
+      res.json({ suggestions: await tagSuggestions(topicRepo, articleRepo) });
+    })
+  );
+
+  router.post(
     "/api/semantic-filter",
     asyncRoute(async (req, res) => {
       const input = readSemanticFilterInput(req.body || {});
@@ -572,6 +785,22 @@ function createAdminRouter(options: AnyRecord = {}) {
           model: result.model
         }))
       });
+    })
+  );
+
+  router.post(
+    "/api/auto-tag/run",
+    asyncRoute(async (req, res) => {
+      const input = readAutoTagInput(req.body || {});
+      const result = await autoTagArticlesForTopics({
+        articleRepo,
+        evaluationRepo,
+        filterArticlesForTopic,
+        limitPerTopic: input.limitPerTopic,
+        requireLlm: true,
+        topicRepo
+      });
+      res.json(result);
     })
   );
 

@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root {
   color-scheme: light;
   --bg: #f6f7f9;
@@ -33,12 +35,14 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
 input,
-select {
+select,
+textarea {
   min-height: 36px;
   width: 100%;
   border: 1px solid var(--line);
@@ -48,13 +52,20 @@ select {
   padding: 7px 9px;
 }
 
-input:disabled {
+textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+input:disabled,
+textarea:disabled {
   background: #f2f4f7;
   color: var(--muted);
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   outline: 2px solid rgba(15, 118, 110, 0.22);
   border-color: var(--accent);
 }
@@ -125,12 +136,18 @@ label {
   cursor: pointer;
   padding: 8px 10px;
   text-align: left;
+  text-decoration: none;
 }
 
 .nav-item:hover,
 .nav-item.active {
   background: var(--sidebar-active);
   color: #ffffff;
+}
+
+.nav-item-link-icon {
+  margin-left: auto;
+  opacity: 0.72;
 }
 
 .icon-button {
@@ -298,6 +315,15 @@ label {
 
 .button.secondary:hover {
   background: #f2f4f7;
+}
+
+.button.danger {
+  color: var(--danger);
+}
+
+.button.danger:hover {
+  border-color: rgba(180, 35, 24, 0.28);
+  background: rgba(180, 35, 24, 0.07);
 }
 
 .table-panel {
@@ -758,11 +784,177 @@ tbody tr:last-child td {
   padding: 2px 0 0;
 }
 
+.tagging-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.38fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.tagging-main {
+  display: grid;
+  gap: 12px;
+}
+
+.tagging-run-card,
+.tag-editor-card,
+.tag-suggestions-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.tagging-run-card {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(120px, 0.22fr) minmax(340px, auto);
+  gap: 10px;
+  align-items: end;
+  padding: 12px;
+}
+
+.tagging-run-card h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.tagging-run-card p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tagging-cost {
+  grid-column: auto;
+  gap: 4px 10px;
+  min-width: 280px;
+}
+
+.tagging-run-action {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.tag-create-row,
+.tag-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.35fr) minmax(280px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.tag-create-row {
+  border-bottom: 1px solid var(--line);
+  padding: 12px;
+}
+
+.tag-free-text-row {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  border-bottom: 1px solid var(--line);
+  padding: 12px;
+}
+
+.tag-list {
+  display: grid;
+}
+
+.tag-row {
+  border-bottom: 1px solid var(--line);
+  padding: 12px;
+}
+
+.tag-row:last-child {
+  border-bottom: 0;
+}
+
+.tag-row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.tag-empty {
+  padding: 18px;
+}
+
+.tag-suggestions-card {
+  position: sticky;
+  top: 16px;
+  overflow: hidden;
+}
+
+.tag-suggestion-actions {
+  border-bottom: 1px solid var(--line);
+  padding: 10px 12px;
+}
+
+.tag-suggestion-list {
+  display: grid;
+  max-height: calc(100vh - 220px);
+  overflow: auto;
+}
+
+.tag-suggestion {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  border-bottom: 1px solid var(--line);
+  padding: 12px;
+}
+
+.tag-suggestion:last-child {
+  border-bottom: 0;
+}
+
+.tag-suggestion-name {
+  color: var(--ink);
+  font-weight: 850;
+}
+
+.tag-suggestion-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 3px;
+}
+
+.tag-suggestion-meta span {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f9fafb;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 3px 6px;
+  text-transform: uppercase;
+}
+
+.tag-suggestion p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
 @media (max-width: 1160px) {
   .semantic-card,
   .filters-card,
   .refetch-card,
   .source-filters-card,
+  .tagging-layout,
+  .tagging-run-card,
+  .tag-create-row,
+  .tag-free-text-row,
+  .tag-row,
   .edit-source-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -770,6 +962,10 @@ tbody tr:last-child td {
   .toolbar-actions {
     grid-column: span 2;
     justify-content: stretch;
+  }
+
+  .tag-suggestions-card {
+    position: static;
   }
 
   .button {
@@ -810,11 +1006,17 @@ tbody tr:last-child td {
   .filters-card,
   .refetch-card,
   .source-filters-card,
+  .tagging-layout,
+  .tagging-run-card,
+  .tag-create-row,
+  .tag-free-text-row,
+  .tag-row,
   .edit-source-grid {
     grid-template-columns: 1fr;
   }
 
   .toolbar-actions,
+  .tag-row-actions,
   .pager,
   .modal-actions {
     flex-direction: column;

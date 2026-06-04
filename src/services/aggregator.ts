@@ -1,5 +1,6 @@
 const Parser = require("rss-parser");
 const {
+  autoTaggingEnabled,
   articleExtractionLimitPerSource,
   checkerBatchSize,
   checkerMaxRuntimeMs,
@@ -10,7 +11,7 @@ const {
   robotsWarningsMaxStored
 } = require("../config");
 const { fetchText } = require("../lib/http");
-const { articleRepo, checkRepo, sourceRepo } = require("../db/repositories");
+const { articleRepo, checkRepo, evaluationRepo, sourceRepo, topicRepo } = require("../db/repositories");
 const { discoverFeedUrl } = require("./feedDiscovery");
 const firecrawl = require("./firecrawl");
 const {
@@ -23,6 +24,7 @@ const {
   hasHeadlineTranslations,
   translateHeadlines
 } = require("./headlineTranslator");
+const { autoTagArticlesForTopics } = require("./autoTagger");
 const robots = require("./robots");
 const { isDue } = require("./schedulePolicy");
 
@@ -278,6 +280,10 @@ async function aggregateSource(source: AnyRecord, options: AnyRecord = {}) {
   let contentFailedCount = 0;
   let headlineTranslatedCount = 0;
   let headlineTranslationFailedCount = 0;
+  let autoTaggedCount = 0;
+  let autoTagMatchedCount = 0;
+  let autoTagRejectedCount = 0;
+  let autoTagError = null;
   let scrapeError = null;
 
   try {
@@ -324,10 +330,12 @@ async function aggregateSource(source: AnyRecord, options: AnyRecord = {}) {
 
     const extractionTargets = [];
     const headlineTranslationTargets = [];
+    const autoTagTargets = [];
     for (const article of articles.slice(0, maxItems)) {
       const result = await articleRepo.upsertArticle(article);
       if (result.inserted) insertedCount += 1;
       else updatedCount += 1;
+      if (result.inserted) autoTagTargets.push(result.article);
       if (result.inserted || !hasHeadlineTranslations(result.article)) {
         headlineTranslationTargets.push(result.article);
       }
@@ -351,6 +359,22 @@ async function aggregateSource(source: AnyRecord, options: AnyRecord = {}) {
       );
       contentExtractedCount = extractionResult.extractedCount;
       contentFailedCount = extractionResult.failedCount;
+    }
+
+    if (autoTaggingEnabled && autoTagTargets.length && !isPastDeadline(ctx.deadlineMs, 5000)) {
+      try {
+        const autoTagResult = await autoTagArticlesForTopics({
+          articleRepo,
+          evaluationRepo,
+          topicRepo,
+          articles: autoTagTargets
+        });
+        autoTaggedCount = autoTagResult.evaluatedCount;
+        autoTagMatchedCount = autoTagResult.matchedCount;
+        autoTagRejectedCount = autoTagResult.rejectedCount;
+      } catch (error: any) {
+        autoTagError = error.message || String(error);
+      }
     }
 
     await checkRepo.finishCheck(checkId, {
@@ -378,6 +402,10 @@ async function aggregateSource(source: AnyRecord, options: AnyRecord = {}) {
       contentFailedCount,
       headlineTranslatedCount,
       headlineTranslationFailedCount,
+      autoTaggedCount,
+      autoTagMatchedCount,
+      autoTagRejectedCount,
+      autoTagError,
       directScrapeCount: ctx.counters.directScrapeCount,
       firecrawlCallCount: ctx.counters.firecrawlCallCount,
       robotsWarningCount: ctx.robotsWarningCount
